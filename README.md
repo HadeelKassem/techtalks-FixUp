@@ -22,7 +22,11 @@ for a new customer in a centralized workspace for both sides .
 -recommendations
 
 # Tech Stach 
-
+Frontend  : React 18
+Backend   : Spring Boot 3 + Spring Security
+Auth      : JWT (JJWT library)
+Database  : PostgreSQL + JPA / Hibernate
+Real-time : WebSocket (STOMP / SockJS
 
 
 
