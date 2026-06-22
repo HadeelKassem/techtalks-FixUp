@@ -156,7 +156,11 @@ Authorization: Bearer <JWT_TOKEN>
 
 ## Postman
 Import the shared Postman workspace: **FixUp API**
-- Ask the tech lead for the workspace invite link
+- join through invite link
 - Set environment to: `FixUp Local`
 - Variables: `base_url` = `http://localhost:8080`
+
+# Note : postgreSQL password  : fixup
+ 
+
 
