@@ -17,32 +17,27 @@ public class ProviderProfileController {
 
     private final ProviderProfileService providerProfileService;
 
-    // POST /api/providers/{userId}/profile
-    // @Valid → triggers the @NotBlank validations defined in CreateProviderProfileRequest
-    //          Spring auto-returns 400 Bad Request if validation fails
     @PostMapping("/{userId}/profile")
     public ResponseEntity<ProviderProfileDto> createProviderProfile(
             @PathVariable Long userId,
             @Valid @RequestBody CreateProviderProfileRequest request) {
 
         ProviderProfileDto created = providerProfileService.createProviderProfile(userId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);  // 201 Created
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // GET /api/providers/{userId}/profile
     @GetMapping("/{userId}/profile")
     public ResponseEntity<ProviderProfileDto> getProviderProfile(@PathVariable Long userId) {
         ProviderProfileDto profile = providerProfileService.getProviderProfile(userId);
-        return ResponseEntity.ok(profile);   // 200 OK
+        return ResponseEntity.ok(profile);
     }
 
-    // PUT /api/providers/{userId}/profile
     @PutMapping("/{userId}/profile")
     public ResponseEntity<ProviderProfileDto> updateProviderProfile(
             @PathVariable Long userId,
             @RequestBody UpdateProviderProfileRequest request) {
 
         ProviderProfileDto updated = providerProfileService.updateProviderProfile(userId, request);
-        return ResponseEntity.ok(updated);   // 200 OK
+        return ResponseEntity.ok(updated);
     }
 }
