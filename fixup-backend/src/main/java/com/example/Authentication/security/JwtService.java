@@ -1,6 +1,7 @@
 package com.example.Authentication.security;
 
 import com.example.Authentication.entity.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -27,8 +28,8 @@ public class JwtService {
         key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    // ✅ CREATE TOKEN
     public String generateToken(User user) {
+
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("role", user.getRole().name())
@@ -38,13 +39,30 @@ public class JwtService {
                 .compact();
     }
 
-    // ✅ EXTRACT EMAIL (THIS FIXES YOUR ERROR)
     public String extractEmail(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+    public boolean isTokenValid(String token, User user) {
+
+        String email = extractEmail(token);
+
+        return email.equals(user.getEmail()) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+
+        return extractAllClaims(token)
+                .getExpiration()
+                .before(new Date());
+    }
+
+    private Claims extractAllClaims(String token) {
+
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+                .getBody();
     }
 }
