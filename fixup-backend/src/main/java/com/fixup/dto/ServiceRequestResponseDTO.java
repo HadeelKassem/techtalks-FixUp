@@ -10,9 +10,9 @@ import lombok.Data;
 public class ServiceRequestResponseDTO {
 
 private Long id;
-private String ClientName;
-private String ProviderName;
-private String CategoryName;
+private String clientName;
+private String providerName;
+private String categoryName;
 private String location;
 private LocalDate preferredDate;
 private String notes;

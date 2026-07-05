@@ -11,7 +11,7 @@ import lombok.Data;
 public class ServiceRequestDTO {
 
     @NotBlank(message = "Category is required")
-    private String category;
+    private Long categoryId;
 
     @NotBlank(message = "Location is required")
     private String location;
