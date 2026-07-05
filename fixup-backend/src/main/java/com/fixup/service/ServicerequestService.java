@@ -27,6 +27,7 @@ public class ServiceRequestService {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    // CLIENT - create booking
     public ServiceRequestResponseDTO createRequest(ServiceRequestDTO dto, String clientEmail) {
         User client = userRepository.findByEmail(clientEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -42,37 +43,81 @@ public class ServiceRequestService {
         request.setNotes(dto.getNotes());
         request.setStatus(ServiceRequest.RequestStatus.PENDING);
 
-        ServiceRequest saved = serviceRequestRepository.save(request);
-        return mapToResponseDTO(saved);
+        return mapToResponseDTO(serviceRequestRepository.save(request));
     }
 
-    public List<ServiceRequestResponseDTO> getMyRequests(String clientEmail) {
-        User client = userRepository.findByEmail(clientEmail)
+    // CLIENT - cancel booking
+    public ServiceRequestResponseDTO cancelRequest(Long id, String clientEmail) {
+        ServiceRequest request = serviceRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!request.getClient().getEmail().equals(clientEmail)) {
+            throw new RuntimeException("Not authorized");
+        }
+
+        request.setStatus(ServiceRequest.RequestStatus.CANCELLED);
+        return mapToResponseDTO(serviceRequestRepository.save(request));
+    }
+
+    // CLIENT - mark complete
+    public ServiceRequestResponseDTO clientCompleteRequest(Long id, String clientEmail) {
+        ServiceRequest request = serviceRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!request.getClient().getEmail().equals(clientEmail)) {
+            throw new RuntimeException("Not authorized");
+        }
+
+        request.setStatus(ServiceRequest.RequestStatus.COMPLETED);
+        return mapToResponseDTO(serviceRequestRepository.save(request));
+    }
+
+    // PROVIDER - accept booking
+    public ServiceRequestResponseDTO acceptRequest(Long id, String providerEmail) {
+        ServiceRequest request = serviceRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        User provider = userRepository.findByEmail(providerEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return serviceRequestRepository.findByClient(client)
+        request.setProvider(provider);
+        request.setStatus(ServiceRequest.RequestStatus.ACCEPTED);
+        return mapToResponseDTO(serviceRequestRepository.save(request));
+    }
+
+    // PROVIDER - deny booking
+    public ServiceRequestResponseDTO denyRequest(Long id, String providerEmail) {
+        ServiceRequest request = serviceRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        request.setStatus(ServiceRequest.RequestStatus.CANCELLED);
+        return mapToResponseDTO(serviceRequestRepository.save(request));
+    }
+
+    // PROVIDER - mark complete
+    public ServiceRequestResponseDTO providerCompleteRequest(Long id, String providerEmail) {
+        ServiceRequest request = serviceRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        request.setStatus(ServiceRequest.RequestStatus.COMPLETED);
+        return mapToResponseDTO(serviceRequestRepository.save(request));
+    }
+
+    // BOTH - get one booking by id
+    public ServiceRequestResponseDTO getById(Long id) {
+        ServiceRequest request = serviceRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        return mapToResponseDTO(request);
+    }
+
+    // BOTH - get my bookings
+    public List<ServiceRequestResponseDTO> getMyRequests(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return serviceRequestRepository.findByClient(user)
                 .stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
-    }
-
-    public List<ServiceRequestResponseDTO> getIncomingRequests(String providerEmail) {
-     userRepository.findByEmail(providerEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return serviceRequestRepository.findByStatus(ServiceRequest.RequestStatus.PENDING)
-                .stream()
-                .map(this::mapToResponseDTO)
-                .collect(Collectors.toList());
-    }
-
-    public ServiceRequestResponseDTO updateStatus(Long requestId, String newStatus, String userEmail) {
-        ServiceRequest request = serviceRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Request not found"));
-
-        request.setStatus(ServiceRequest.RequestStatus.valueOf(newStatus));
-        ServiceRequest updated = serviceRequestRepository.save(request);
-        return mapToResponseDTO(updated);
     }
 
     private ServiceRequestResponseDTO mapToResponseDTO(ServiceRequest request) {

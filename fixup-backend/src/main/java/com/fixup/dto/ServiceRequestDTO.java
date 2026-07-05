@@ -17,7 +17,7 @@ public class ServiceRequestDTO {
     private String location;
 
     @NotNull(message = "Date is required")
-    @Future(message = "Date must be in the future")
+    @Future(message = "Date must not be in the future")
     private LocalDate preferredDate;
 
     private String notes;
