@@ -1,0 +1,14 @@
+ //---HTTP Request (JSON)-->controller ---- call--> service ----call --> Repository --- query -->  database <---entity (a sample class of the table in the db  )
+
+
+ @entity
+ @Table( name =  "table_name_in_the_db");
+ public class User {
+ //key 
+ @Id 
+ @GeneratedValue(strategy = GenerationType.IDENTITY)
+ //attributes per columns
+
+
+
+ }
