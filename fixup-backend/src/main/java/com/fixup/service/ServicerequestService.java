@@ -60,17 +60,22 @@ public class ServiceRequestService {
     }
 
     // CLIENT - mark complete
-    public ServiceRequestResponseDTO clientCompleteRequest(Long id, String clientEmail) {
-        ServiceRequest request = serviceRequestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+   public ServiceRequestResponseDTO clientCompleteRequest(Long id, String clientEmail) {
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (!request.getClient().getEmail().equals(clientEmail)) {
-            throw new RuntimeException("Not authorized");
-        }
-
-        request.setStatus(ServiceRequest.RequestStatus.COMPLETED);
-        return mapToResponseDTO(serviceRequestRepository.save(request));
+    if (!request.getClient().getEmail().equals(clientEmail)) {
+        throw new RuntimeException("Not authorized");
     }
+
+    request.setClientConfirmedComplete(true);
+
+    if (request.isProviderConfirmedComplete()) {
+        request.setStatus(ServiceRequest.RequestStatus.COMPLETED);
+    }
+
+    return mapToResponseDTO(serviceRequestRepository.save(request));
+}
 
     // PROVIDER - accept booking
     public ServiceRequestResponseDTO acceptRequest(Long id, String providerEmail) {
@@ -96,12 +101,17 @@ public class ServiceRequestService {
 
     // PROVIDER - mark complete
     public ServiceRequestResponseDTO providerCompleteRequest(Long id, String providerEmail) {
-        ServiceRequest request = serviceRequestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
 
+    request.setProviderConfirmedComplete(true);
+
+    if (request.isClientConfirmedComplete()) {
         request.setStatus(ServiceRequest.RequestStatus.COMPLETED);
-        return mapToResponseDTO(serviceRequestRepository.save(request));
     }
+
+    return mapToResponseDTO(serviceRequestRepository.save(request));
+}
 
     // BOTH - get one booking by id
     public ServiceRequestResponseDTO getById(Long id) {
@@ -131,6 +141,10 @@ public class ServiceRequestService {
         response.setNotes(request.getNotes());
         response.setStatus(request.getStatus().name());
         response.setCreatedAt(request.getCreatedAt());
+
+        response.setClientConfirmedComplete(request.isClientConfirmedComplete());
+        response.setProviderConfirmedComplete(request.isProviderConfirmedComplete());
+
         return response;
     }
 }

@@ -19,4 +19,7 @@ private String notes;
 private String status;
 private LocalDateTime createdAt;
 
+private boolean clientConfirmedComplete;
+private boolean providerConfirmedComplete;
+
 }

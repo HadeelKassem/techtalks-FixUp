@@ -40,4 +40,6 @@ public class ServiceRequest {
     public enum RequestStatus {
         PENDING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
     }
+    private boolean clientConfirmedComplete = false;
+    private boolean providerConfirmedComplete = false;
 }
