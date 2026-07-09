@@ -35,4 +35,12 @@ public class ReportService {
         return dto;
     }
 
+    public ReportDTO updateReportStatus(Long reportId, Report.ReportStatus newStatus) {
+    Report report = reportRepository.findById(reportId)
+            .orElseThrow(() -> new RuntimeException("Report not found with id: " + reportId));
+    report.setStatus(newStatus);
+    Report saved = reportRepository.save(report);
+    return mapToDto(saved);
+}
+
 }
