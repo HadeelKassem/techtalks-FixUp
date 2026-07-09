@@ -156,3 +156,25 @@ export function updateMyClientProfile(updates) {
     body: JSON.stringify(updates),
   });
 }
+
+// ---- Booking actions (Authentication resolves the user server-side) ----
+
+export function acceptBooking(id) {
+  return authRequest(`/api/bookings/${id}/accept`, { method: "PUT" });
+}
+
+export function denyBooking(id) {
+  return authRequest(`/api/bookings/${id}/deny`, { method: "PUT" });
+}
+
+export function providerCompleteBooking(id) {
+  return authRequest(`/api/bookings/${id}/complete-provider`, { method: "PUT" });
+}
+
+export function clientCompleteBooking(id) {
+  return authRequest(`/api/bookings/${id}/complete`, { method: "PUT" });
+}
+
+export function cancelBooking(id) {
+  return authRequest(`/api/bookings/${id}/cancel`, { method: "PUT" });
+}
