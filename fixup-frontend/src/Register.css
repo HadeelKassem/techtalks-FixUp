@@ -1,0 +1,197 @@
+.register-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: linear-gradient(180deg, #0a2540 0%, #123a5c 45%, #76aaf3 45%, #6fabff 100%);
+    font-family: "Inter", system-ui, sans-serif;
+  }
+  
+  .register-card {
+    width: 100%;
+    max-width: 460px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 36px 36px 28px;
+    box-shadow: 0 24px 60px rgba(10, 37, 64, 0.25);
+  }
+  
+  .register-brand {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #123a5c;
+    margin-bottom: 6px;
+  }
+  
+  .register-brand span {
+    color: #2f6fed;
+  }
+  
+  .register-tagline {
+    color: #5b6b82;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 20px;
+  }
+  
+  .mode-toggle {
+    display: flex;
+    background: #123a5c;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+  }
+  
+  .mode-option {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #9fb3d1;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  
+  .mode-option.is-active {
+    background: #2f6fed;
+    color: #ffffff;
+  }
+  
+  .role-toggle {
+    display: flex;
+    background: #e8eff8;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 22px;
+  }
+  
+  .role-option {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #5b6b82;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  
+  .role-option.is-active {
+    background: #123a5c;
+    color: #ffffff;
+  }
+  
+  .register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  
+  .field-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #123a5c;
+  }
+  
+  .field input,
+  .field select {
+    border: 1px solid #d3ddee;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #123a5c;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  
+  .field input:focus,
+  .field select:focus {
+    border-color: #2f6fed;
+  }
+  
+  .field-error {
+    font-size: 12px;
+    color: #c04141;
+  }
+  
+  .success-message {
+    background: #eaf6ec;
+    border: 1px solid #b9dfc0;
+    color: #2f6b3a;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  
+  .server-error {
+    background: #fdecec;
+    border: 1px solid #f1baba;
+    color: #a13a3a;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  
+  .register-submit {
+    margin-top: 8px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 9px;
+    background: #2f6fed;
+    color: #ffffff;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  
+  .register-submit:hover {
+    background: #2557c4;
+  }
+  
+  .register-submit:disabled {
+    background: #9db7e6;
+    cursor: not-allowed;
+  }
+  
+  .register-footnote {
+    text-align: center;
+    margin: 18px 0 0;
+    font-size: 13px;
+    color: #5b6b82;
+  }
+  
+  .link-btn {
+    background: none;
+    border: none;
+    color: #123a5c;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 480px) {
+    .field-row {
+      grid-template-columns: 1fr;
+    }
+  }

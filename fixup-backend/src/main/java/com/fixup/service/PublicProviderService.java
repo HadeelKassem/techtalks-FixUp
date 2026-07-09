@@ -31,7 +31,7 @@ public class PublicProviderService {
     private PublicProviderDto mapToDto(ProviderProfile profile) {
         PublicProviderDto dto = new PublicProviderDto();
         dto.setId(profile.getId());
-        dto.setName(profile.getUser().getName());
+        dto.setName(profile.getUser().getUsername());
         dto.setBio(profile.getBio());
         dto.setSkills(profile.getSkills());
         dto.setServiceArea(profile.getServiceArea());

@@ -51,7 +51,7 @@ public class ClientProfileService {
                 });
 
         // Only update fields if they were actually provided in the request
-        if (request.getName() != null)             user.setName(request.getName());
+        if (request.getName() != null)             user.setUsername(request.getName());
         if (request.getPhone() != null)            profile.setPhone(request.getPhone());
         if (request.getAddress() != null)          profile.setAddress(request.getAddress());
         if (request.getCity() != null)             profile.setCity(request.getCity());
@@ -68,7 +68,7 @@ public class ClientProfileService {
     private ClientProfileDto mapToDto(User user, ClientProfile profile) {
         ClientProfileDto dto = new ClientProfileDto();
         dto.setUserId(user.getId());
-        dto.setName(user.getName());
+        dto.setName(user.getUsername());
         dto.setEmail(user.getEmail());
         dto.setPhone(profile.getPhone());
         dto.setAddress(profile.getAddress());

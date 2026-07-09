@@ -133,8 +133,8 @@ public class ServiceRequestService {
     private ServiceRequestResponseDTO mapToResponseDTO(ServiceRequest request) {
         ServiceRequestResponseDTO response = new ServiceRequestResponseDTO();
         response.setId(request.getId());
-        response.setClientName(request.getClient().getName());
-        response.setProviderName(request.getProvider() != null ? request.getProvider().getName() : null);
+        response.setClientName(request.getClient().getUsername());
+        response.setProviderName(request.getProvider() != null ? request.getProvider().getUsername() : null);
         response.setCategoryName(request.getCategory().getName());
         response.setLocation(request.getLocation());
         response.setPreferredDate(request.getPreferredDate());

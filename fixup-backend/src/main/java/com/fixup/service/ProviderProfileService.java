@@ -68,7 +68,7 @@ public class ProviderProfileService {
     private ProviderProfileDto mapToDto(User user, ProviderProfile profile) {
         ProviderProfileDto dto = new ProviderProfileDto();
         dto.setUserId(user.getId());
-        dto.setName(user.getName());
+        dto.setName(user.getUsername());
         dto.setEmail(user.getEmail());
         dto.setBio(profile.getBio());
         dto.setSkills(profile.getSkills());
