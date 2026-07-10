@@ -1,5 +1,7 @@
 package com.fixup.service;
 
+import org.springframework.stereotype.Service;
+
 import com.fixup.dto.CreateProviderProfileRequest;
 import com.fixup.dto.ProviderProfileDto;
 import com.fixup.dto.UpdateProviderProfileRequest;
@@ -7,8 +9,8 @@ import com.fixup.model.ProviderProfile;
 import com.fixup.model.User;
 import com.fixup.repository.ProviderProfileRepository;
 import com.fixup.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -68,7 +70,7 @@ public class ProviderProfileService {
     private ProviderProfileDto mapToDto(User user, ProviderProfile profile) {
         ProviderProfileDto dto = new ProviderProfileDto();
         dto.setUserId(user.getId());
-        dto.setName(user.getName());
+        dto.setName(user.getUsername());
         dto.setEmail(user.getEmail());
         dto.setBio(profile.getBio());
         dto.setSkills(profile.getSkills());

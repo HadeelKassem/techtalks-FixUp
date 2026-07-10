@@ -1,13 +1,15 @@
 package com.fixup.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
 import com.fixup.dto.PublicProviderDto;
 import com.fixup.model.ProviderProfile;
 import com.fixup.repository.ProviderProfileRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +33,7 @@ public class PublicProviderService {
     private PublicProviderDto mapToDto(ProviderProfile profile) {
         PublicProviderDto dto = new PublicProviderDto();
         dto.setId(profile.getId());
-        dto.setName(profile.getUser().getName());
+        dto.setName(profile.getUser().getUsername());
         dto.setBio(profile.getBio());
         dto.setSkills(profile.getSkills());
         dto.setServiceArea(profile.getServiceArea());
@@ -39,4 +41,12 @@ public class PublicProviderService {
         dto.setAvgRating(profile.getAvgRating());
         return dto;
     }
+
+    private final ReviewService reviewService; 
+
+    public double getAverageRating(Long id) {
+    ProviderProfile profile = providerProfileRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Provider not found with id: " + id));
+    return reviewService.calculateAverageRating(profile.getUser());
+}
 }

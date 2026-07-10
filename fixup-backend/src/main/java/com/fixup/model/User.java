@@ -1,12 +1,20 @@
 package com.fixup.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
-@Data
+import com.fixup.model.Role;
+
+@Getter
+@Setter
+@NoArgsConstructor
 @Entity
 @Table(name = "users")
+@Inheritance(strategy = InheritanceType.JOINED)
 public class User {
 
     @Id
@@ -14,7 +22,7 @@ public class User {
     private Long id;
 
     @Column(nullable = false)
-    private String name;
+    private String username;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -22,20 +30,18 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
-    @Enumerated(EnumType.STRING)
-    private UserStatus status = UserStatus.ACTIVE;
-
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    public enum Role {
-        CLIENT, PROVIDER, ADMIN
-    }
-
-    public enum UserStatus {
-        ACTIVE, SUSPENDED
+    @PrePersist
+    public void prePersist() {
+        createdAt = LocalDateTime.now();
     }
 }

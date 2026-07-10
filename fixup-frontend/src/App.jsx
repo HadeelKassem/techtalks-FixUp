@@ -113,178 +113,57 @@ function RequestDetails({ request }) {
   )
 }
 /*
-function App() {
-  const [activeView, setActiveView] = useState('provider')
-  const [requests, setRequests] = useState(initialRequests)
-  const [expandedRequestId, setExpandedRequestId] = useState(null)
+import { useState, useEffect } from "react";
+import Register from "./Register";
+import ClientDashboard from "./ClientDashboard";
+import ProviderDashboard from "./ProviderDashboard";
+import { getValidSession, clearSession } from "./api";
+import "./App.css";
 
-  const updateStatus = (id, status) => {
-    setRequests((currentRequests) =>
-      currentRequests.map((request) =>
-        request.id === id ? { ...request, status } : request,
-      ),
-    )
-    setExpandedRequestId(id)
+function App() {
+  const [user, setUser] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // On first load (including refresh), check localStorage for a
+  // still-valid token instead of always showing the login screen.
+  useEffect(() => {
+    const { user: storedUser } = getValidSession();
+    if (storedUser) {
+      setUser(storedUser);
+    }
+    setCheckingSession(false);
+  }, []);
+
+  const handleAuthDone = ({ user: authedUser }) => {
+    if (authedUser) setUser(authedUser);
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    setUser(null);
+  };
+
+  if (checkingSession) {
+    // Avoids a flash of the login screen while we check localStorage.
+    return null;
   }
 
-  const summary = useMemo(() => ({
-    pending: requests.filter((request) => request.status === 'Pending').length,
-    active: requests.filter((request) => ['Accepted', 'In Progress'].includes(request.status)).length,
-    completed: requests.filter((request) => request.status === 'Completed').length,
-  }), [requests])
+  if (!user) {
+    return <Register onDone={handleAuthDone} />;
+  }
 
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <button type="button" className="brand" onClick={() => setActiveView('provider')}>
-          Fix<span>Up</span>
-        </button>
+  if (user.role === "CLIENT") {
+    return <ClientDashboard user={user} onLogout={handleLogout} />;
+  }
 
-        <nav className="main-nav" aria-label="Main navigation">
-          <button
-            type="button"
-            className={activeView === 'provider' ? 'nav-link active' : 'nav-link'}
-            onClick={() => setActiveView('provider')}
-          >
-            Provider Dashboard
-          </button>
-          <button
-            type="button"
-            className={activeView === 'history' ? 'nav-link active' : 'nav-link'}
-            onClick={() => setActiveView('history')}
-          >
-            Request History
-          </button>
-          <button type="button" className="profile-chip" aria-label="Open provider profile">
-            JP
-          </button>
-        </nav>
-      </header>
+  if (user.role === "PROVIDER") {
+    return <ProviderDashboard user={user} onLogout={handleLogout} />;
+  }
 
-      {activeView === 'provider' ? (
-        <main className="page-wrap">
-          <section className="page-heading provider-heading">
-            <div>
-              <p className="eyebrow">SERVICE PROVIDER DASHBOARD</p>
-              <h1>Welcome back, John</h1>
-              <p className="subheading">Review client requests and update each job as you work.</p>
-            </div>
-            <button type="button" className="primary-button">Edit Profile</button>
-          </section>
-
-          <section className="summary-grid" aria-label="Request summary">
-            <article className="summary-card">
-              <span className="summary-icon">◌</span>
-              <div><p>New requests</p><strong>{summary.pending}</strong></div>
-            </article>
-            <article className="summary-card">
-              <span className="summary-icon">↻</span>
-              <div><p>Active requests</p><strong>{summary.active}</strong></div>
-            </article>
-            <article className="summary-card">
-              <span className="summary-icon">✓</span>
-              <div><p>Completed</p><strong>{summary.completed}</strong></div>
-            </article>
-            <article className="summary-card">
-              <span className="summary-icon">★</span>
-              <div><p>Average rating</p><strong>4.8</strong></div>
-            </article>
-          </section>
-
-          <section className="content-section">
-            <div className="section-heading">
-              <div>
-                <h2>Manage requests</h2>
-                <p>Accept or reject new requests, then move accepted jobs through their status.</p>
-              </div>
-            </div>
-
-            <div className="request-list">
-              {requests.map((request) => (
-                <article className="request-card" key={request.id}>
-                  <div className="request-card-main">
-                    <div className="request-title-row">
-                      <div>
-                        <p className="service-category">SERVICE REQUEST</p>
-                        <h3>{request.service}</h3>
-                      </div>
-                      <StatusBadge status={request.status} />
-                    </div>
-                    <div className="request-meta">
-                      <span><b>Client:</b> {request.client}</span>
-                      <span><b>When:</b> {request.date} · {request.time}</span>
-                      <span><b>Where:</b> {request.location}</span>
-                    </div>
-
-                    {expandedRequestId === request.id && <RequestDetails request={request} />}
-                  </div>
-
-                  <div className="request-actions">
-                    {request.status === 'Pending' && (
-                      <>
-                        <button type="button" className="primary-button compact" onClick={() => updateStatus(request.id, 'Accepted')}>Accept</button>
-                        <button type="button" className="danger-button compact" onClick={() => updateStatus(request.id, 'Rejected')}>Reject</button>
-                      </>
-                    )}
-                    {request.status === 'Accepted' && (
-                      <button type="button" className="primary-button compact" onClick={() => updateStatus(request.id, 'In Progress')}>Start Service</button>
-                    )}
-                    {request.status === 'In Progress' && (
-                      <button type="button" className="success-button compact" onClick={() => updateStatus(request.id, 'Completed')}>Mark Completed</button>
-                    )}
-                    <button
-                      type="button"
-                      className="secondary-button compact"
-                      onClick={() => setExpandedRequestId((currentId) => currentId === request.id ? null : request.id)}
-                    >
-                      {expandedRequestId === request.id ? 'Hide Details' : 'View Details'}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        </main>
-      ) : (
-        <main className="page-wrap">
-          <section className="page-heading">
-            <div>
-              <p className="eyebrow">CLIENT DASHBOARD</p>
-              <h1>Request History</h1>
-              <p className="subheading">Track each service request from submission to completion.</p>
-            </div>
-            <button type="button" className="primary-button">+ Create Request</button>
-          </section>
-
-          <section className="content-section">
-            <div className="request-list history-list">
-              {requests.map((request) => (
-                <article className="history-card" key={request.id}>
-                  <div className="request-title-row">
-                    <div>
-                      <p className="service-category">{request.provider}</p>
-                      <h3>{request.service}</h3>
-                    </div>
-                    <StatusBadge status={request.status} />
-                  </div>
-                  <p className="history-date">Requested for {request.date} at {request.time}</p>
-                  <StatusTracker status={request.status} />
-                  <button
-                    type="button"
-                    className="secondary-button compact details-toggle"
-                    onClick={() => setExpandedRequestId((currentId) => currentId === request.id ? null : request.id)}
-                  >
-                    {expandedRequestId === request.id ? 'Hide Details' : 'View Details'}
-                  </button>
-                  {expandedRequestId === request.id && <RequestDetails request={request} />}
-                </article>
-              ))}
-            </div>
-          </section>
-        </main>
-      )}
-    </div>
-  )
+  // Unknown/unexpected role — safest fallback is to log out rather than
+  // show a broken screen.
+  clearSession();
+  return <Register onDone={handleAuthDone} />;
 }
 */
 
