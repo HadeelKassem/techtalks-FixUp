@@ -5,11 +5,11 @@ const API_BASE_URL = "http://localhost:8080";
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
-    ...options,
   });
 
   let data = null;
@@ -146,12 +146,12 @@ export function getMyBookings() {
 // ---- Client profile ----
 // GET /api/clients/me/profile -> ClientProfileDto
 export function getMyClientProfile() {
-  return authRequest("/api/clients/me/profile");
+  return authRequest("/api/client/me/profile");
 }
 
 // PUT /api/clients/me/profile -> ClientProfileDto
 export function updateMyClientProfile(updates) {
-  return authRequest("/api/clients/me/profile", {
+  return authRequest("/api/client/me/profile", {
     method: "PUT",
     body: JSON.stringify(updates),
   });

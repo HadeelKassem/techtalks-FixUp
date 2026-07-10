@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { clearSession } from './api'
 import './Providerdashboard.css'
+import { useNavigate } from "react-router-dom";
 
 const initialRequests = [
   {
@@ -118,7 +119,7 @@ function ProviderDashboard({ onLogout }) {
   const [requests, setRequests] = useState(initialRequests)
   const [expandedRequestId, setExpandedRequestId] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
-
+  const navigate = useNavigate();
   const updateStatus = (id, status) => {
     setRequests((currentRequests) =>
       currentRequests.map((request) =>
@@ -174,6 +175,8 @@ function ProviderDashboard({ onLogout }) {
             {menuOpen && (
               <div className="profile-menu">
                 <button type="button" onClick={handleLogout}>Log out</button>
+                <button type="button" onClick={()=>{setMenuOpen(false); navigate("/provider/profile");}}>Profile</button>
+
               </div>
             )}
           </div>
