@@ -59,7 +59,7 @@ function StatusBadge({ status }) {
   return <span className={`status-badge ${statusClass(status)}`}>{status}</span>
 }
 
-function StatusTracker({ status }) {
+function StatusTracker({ status })  {
   if (status === 'Rejected') {
     return (
       <div className="rejected-tracker" role="status">
