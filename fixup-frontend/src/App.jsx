@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import './App.css'
+import ClientProfile from "./components/ClientProfile";
 
 const initialRequests = [
   {
@@ -111,7 +112,7 @@ function RequestDetails({ request }) {
     </div>
   )
 }
-
+/*
 function App() {
   const [activeView, setActiveView] = useState('provider')
   const [requests, setRequests] = useState(initialRequests)
@@ -284,6 +285,11 @@ function App() {
       )}
     </div>
   )
+}
+*/
+
+function App() {
+  return <ClientProfile />;
 }
 
 export default App;
