@@ -1,12 +1,17 @@
 package com.fixup.controller;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.fixup.dto.PublicProviderDto;
 import com.fixup.service.PublicProviderService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/provider")
@@ -26,4 +31,10 @@ public class PublicProviderController {
         PublicProviderDto provider = publicProviderService.getProviderById(id);
         return ResponseEntity.ok(provider);
     }
+
+    @GetMapping("/{id}/rating")
+    public ResponseEntity<Double> getAverageRating(@PathVariable Long id) {
+    double avgRating = publicProviderService.getAverageRating(id);
+    return ResponseEntity.ok(avgRating);
+}
 }

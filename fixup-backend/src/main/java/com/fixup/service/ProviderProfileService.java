@@ -1,5 +1,7 @@
 package com.fixup.service;
 
+import org.springframework.stereotype.Service;
+
 import com.fixup.dto.CreateProviderProfileRequest;
 import com.fixup.dto.ProviderProfileDto;
 import com.fixup.dto.UpdateProviderProfileRequest;
@@ -7,8 +9,8 @@ import com.fixup.model.ProviderProfile;
 import com.fixup.model.User;
 import com.fixup.repository.ProviderProfileRepository;
 import com.fixup.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
