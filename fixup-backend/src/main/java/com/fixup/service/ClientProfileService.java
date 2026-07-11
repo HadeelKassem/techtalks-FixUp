@@ -14,26 +14,30 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ClientProfileService {
 
-    
+
     private final ClientProfileRepository clientProfileRepository;
     private final UserRepository userRepository;
 
-    //GET CLIENT PROFILE 
+    //GET CLIENT PROFILE
     public ClientProfileDto getClientProfile(Long userId) {
 
-        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
-        
+
         ClientProfile profile = clientProfileRepository.findByUser(user)
                 .orElseGet(() -> {
                     ClientProfile newProfile = new ClientProfile();
                     newProfile.setUser(user);
+                    // Seed from the User record so the profile isn't blank
+                    // on first view — the phone number was already captured
+                    // at registration and shouldn't be lost/hidden here.
+                    newProfile.setPhone(user.getPhoneNumber());
                     return clientProfileRepository.save(newProfile);
                 });
 
-        
+
         return mapToDto(user, profile);
     }
 
@@ -47,6 +51,7 @@ public class ClientProfileService {
                 .orElseGet(() -> {
                     ClientProfile newProfile = new ClientProfile();
                     newProfile.setUser(user);
+                    newProfile.setPhone(user.getPhoneNumber());
                     return newProfile;
                 });
 
@@ -57,7 +62,7 @@ public class ClientProfileService {
         if (request.getCity() != null)             profile.setCity(request.getCity());
         if (request.getProfilePictureUrl() != null) profile.setProfilePictureUrl(request.getProfilePictureUrl());
 
-        
+
         userRepository.save(user);
         clientProfileRepository.save(profile);
 
