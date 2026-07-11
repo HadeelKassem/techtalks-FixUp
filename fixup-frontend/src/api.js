@@ -146,12 +146,12 @@ export function getMyBookings() {
 // ---- Client profile ----
 // GET /api/clients/me/profile -> ClientProfileDto
 export function getMyClientProfile() {
-  return authRequest("/api/client/me/profile");
+  return authRequest("/api/clients/me/profile");
 }
 
 // PUT /api/clients/me/profile -> ClientProfileDto
 export function updateMyClientProfile(updates) {
-  return authRequest("/api/client/me/profile", {
+  return authRequest("/api/clients/me/profile", {
     method: "PUT",
     body: JSON.stringify(updates),
   });
