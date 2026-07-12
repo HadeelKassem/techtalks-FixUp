@@ -7,8 +7,9 @@ import {
 
 import Register from "./Register";
 import ClientDashboard from "./ClientDashboard";
-import ProviderDashboard from "./ProviderDashboard";
+import ProviderDashboard from "./Providerdashboard";
 import ClientProfile from "./components/ClientProfile";
+import ProviderProfile from "./components/Providerprofile";
 
 import {
   getValidSession,
@@ -130,6 +131,16 @@ function App() {
                 <ProviderDashboard
                   user={user}
                   onLogout={handleLogout}
+                />
+              }
+            />
+
+
+            <Route
+              path="/provider/profile"
+              element={
+                <ProviderProfile
+                  user={user}
                 />
               }
             />

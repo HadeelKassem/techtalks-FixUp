@@ -11,7 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/client") // plural — matches ProviderProfileController's "/api/providers" convention
+@RequestMapping("/api/clients") // plural — matches ProviderProfileController's "/api/providers" convention
 @RequiredArgsConstructor
 public class ClientProfileController {
 
