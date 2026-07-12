@@ -162,7 +162,21 @@ function ProviderDashboard({ onLogout }) {
           >
             Request History
           </button>
+<button
+  type="button"
+  className="nav-link"
+  onClick={() => navigate("/provider/chat")}
+>
+  Chat
+</button>
 
+<button
+  type="button"
+  className="nav-link"
+  onClick={() => navigate("/provider/live-location")}
+>
+  Live Location
+</button>
           <div className="profile-menu-wrap">
             <button
               type="button"

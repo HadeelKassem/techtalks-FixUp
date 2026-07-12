@@ -7,8 +7,10 @@ import {
 
 import Register from "./Register";
 import ClientDashboard from "./ClientDashboard";
-import ProviderDashboard from "./ProviderDashboard";
+import ProviderDashboard from "./Providerdashboard";
 import ClientProfile from "./components/ClientProfile";
+import ChatPage from "./pages/ChatPage";
+import LiveLocationPage from "./pages/LiveLocationPage";
 
 import {
   getValidSession,
@@ -103,6 +105,23 @@ function App() {
                 />
               }
             />
+            <Route
+  path="/client/chat"
+  element={
+    <ChatPage
+      role="CLIENT"
+    />
+  }
+/>
+
+<Route
+  path="/client/live-location"
+  element={
+    <LiveLocationPage
+      role="CLIENT"
+    />
+  }
+/>
 
 
             <Route
@@ -133,6 +152,23 @@ function App() {
                 />
               }
             />
+            <Route
+  path="/provider/chat"
+  element={
+    <ChatPage
+      role="PROVIDER"
+    />
+  }
+/>
+
+<Route
+  path="/provider/live-location"
+  element={
+    <LiveLocationPage
+      role="PROVIDER"
+    />
+  }
+/>
 
 
             <Route

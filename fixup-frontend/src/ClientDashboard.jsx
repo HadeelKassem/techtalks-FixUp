@@ -346,7 +346,21 @@ Request History
 
 </button>
 
+<button
+  type="button"
+  className="client-tab"
+  onClick={() => navigate("/client/chat")}
+>
+  Chat
+</button>
 
+<button
+  type="button"
+  className="client-tab"
+  onClick={() => navigate("/client/live-location")}
+>
+  Live Location
+</button>
 
 </nav>
 
