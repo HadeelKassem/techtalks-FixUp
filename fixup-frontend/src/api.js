@@ -146,12 +146,26 @@ export function getMyBookings() {
 // ---- Client profile ----
 // GET /api/clients/me/profile -> ClientProfileDto
 export function getMyClientProfile() {
-  return authRequest("/api/client/me/profile");
+  return authRequest("/api/clients/me/profile");
 }
 
 // PUT /api/clients/me/profile -> ClientProfileDto
 export function updateMyClientProfile(updates) {
-  return authRequest("/api/client/me/profile", {
+  return authRequest("/api/clients/me/profile", {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  });
+}
+
+// ---- Provider profile ----
+// GET /api/providers/me/profile -> ProviderProfileDto
+export function getMyProviderProfile() {
+  return authRequest("/api/providers/me/profile");
+}
+
+// PUT /api/providers/me/profile -> ProviderProfileDto
+export function updateMyProviderProfile(updates) {
+  return authRequest("/api/providers/me/profile", {
     method: "PUT",
     body: JSON.stringify(updates),
   });

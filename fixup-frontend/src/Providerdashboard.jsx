@@ -1,56 +1,41 @@
-import { useMemo, useState } from 'react'
-import { clearSession } from './api'
+import { useEffect, useMemo, useState } from 'react'
+import { clearSession, getMyBookings, getMyProviderProfile, acceptBooking, denyBooking, providerCompleteBooking } from './api'
 import './Providerdashboard.css'
 import { useNavigate } from "react-router-dom";
 
-const initialRequests = [
-  {
-    id: 1,
-    client: 'Sarah Haddad',
-    provider: 'John Plumbing',
-    service: 'Emergency Plumbing Repair',
-    date: 'June 28, 2026',
-    time: '10:00 AM',
-    location: 'Achrafieh, Beirut',
-    status: 'Pending',
-    notes: 'Kitchen sink is leaking under the cabinet.',
-  },
-  {
-    id: 2,
-    client: 'Karim Mansour',
-    provider: 'John Plumbing',
-    service: 'Pipe Installation',
-    date: 'June 29, 2026',
-    time: '2:30 PM',
-    location: 'Jounieh',
-    status: 'Accepted',
-    notes: 'Install a water pipe for a washing machine.',
-  },
-  {
-    id: 3,
-    client: 'Maya Khoury',
-    provider: 'John Plumbing',
-    service: 'Bathroom Repair',
-    date: 'June 25, 2026',
-    time: '11:00 AM',
-    location: 'Hazmieh',
-    status: 'In Progress',
-    notes: 'Replace the bathroom faucet and check the drain.',
-  },
-  {
-    id: 4,
-    client: 'Nadine Salameh',
-    provider: 'John Plumbing',
-    service: 'Water Heater Check',
-    date: 'June 19, 2026',
-    time: '9:00 AM',
-    location: 'Verdun, Beirut',
-    status: 'Completed',
-    notes: 'Annual water-heater maintenance visit.',
-  },
-]
-
 const statusSteps = ['Pending', 'Accepted', 'In Progress', 'Completed']
+
+// Backend enum values ("PENDING", "IN_PROGRESS", ...) -> the display
+// strings statusSteps/StatusTracker expect ("Pending", "In Progress", ...).
+function toDisplayStatus(rawStatus) {
+  const map = {
+    PENDING: 'Pending',
+    ACCEPTED: 'Accepted',
+    IN_PROGRESS: 'In Progress',
+    COMPLETED: 'Completed',
+    DENIED: 'Rejected',
+    CANCELLED: 'Rejected',
+  }
+  return map[(rawStatus || '').toUpperCase()] || rawStatus
+}
+
+// Reshapes a ServiceRequestResponseDTO into the { client, service, date,
+// time, location, notes } shape this page's UI expects.
+function toDisplayRequest(booking) {
+  return {
+    id: booking.id,
+    client: booking.clientName,
+    provider: booking.providerName,
+    service: booking.categoryName,
+    date: booking.preferredDate,
+    time: booking.createdAt
+      ? new Date(booking.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '',
+    location: booking.location,
+    notes: booking.notes,
+    status: toDisplayStatus(booking.status),
+  }
+}
 
 function statusClass(status) {
   return status.toLowerCase().replaceAll(' ', '-')
@@ -116,17 +101,41 @@ function RequestDetails({ request }) {
 
 function ProviderDashboard({ onLogout }) {
   const [activeView, setActiveView] = useState('provider')
-  const [requests, setRequests] = useState(initialRequests)
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [expandedRequestId, setExpandedRequestId] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [busyId, setBusyId] = useState(null)
+  const [profile, setProfile] = useState(null)
   const navigate = useNavigate();
-  const updateStatus = (id, status) => {
-    setRequests((currentRequests) =>
-      currentRequests.map((request) =>
-        request.id === id ? { ...request, status } : request,
-      ),
-    )
-    setExpandedRequestId(id)
+
+  useEffect(() => {
+    getMyBookings()
+      .then((data) => setRequests(data.map(toDisplayRequest)))
+      .catch((err) => setLoadError(err.message || "Couldn't load your requests."))
+      .finally(() => setLoading(false))
+
+    getMyProviderProfile()
+      .then(setProfile)
+      .catch(() => {
+        // Non-fatal — the chip/header just falls back to defaults below.
+      })
+  }, [])
+
+  const runAction = async (id, action) => {
+    setBusyId(id)
+    try {
+      const updated = await action(id)
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? toDisplayRequest(updated) : r))
+      )
+      setExpandedRequestId(id)
+    } catch (err) {
+      alert(err.message || 'That action failed. Please try again.')
+    } finally {
+      setBusyId(null)
+    }
   }
 
   const summary = useMemo(() => ({
@@ -139,6 +148,12 @@ function ProviderDashboard({ onLogout }) {
     clearSession()
     onLogout?.()
   }
+
+  const chipContent = profile?.profilePictureUrl ? (
+    <img src={profile.profilePictureUrl} alt="" className="profile-chip-img" />
+  ) : (
+    profile?.name?.slice(0, 2)?.toUpperCase() || 'JP'
+  )
 
   return (
     <div className="app-shell">
@@ -184,7 +199,7 @@ function ProviderDashboard({ onLogout }) {
               aria-label="Open provider profile"
               onClick={() => setMenuOpen((open) => !open)}
             >
-              JP
+              {chipContent}
             </button>
             {menuOpen && (
               <div className="profile-menu">
@@ -202,10 +217,12 @@ function ProviderDashboard({ onLogout }) {
           <section className="page-heading provider-heading">
             <div>
               <p className="eyebrow">SERVICE PROVIDER DASHBOARD</p>
-              <h1>Welcome back, John</h1>
+              <h1>Welcome back{profile?.name ? `, ${profile.name}` : ''}</h1>
               <p className="subheading">Review client requests and update each job as you work.</p>
             </div>
-            <button type="button" className="primary-button">Edit Profile</button>
+            <button type="button" className="primary-button" onClick={() => navigate('/provider/profile')}>
+              Edit Profile
+            </button>
           </section>
 
           <section className="summary-grid" aria-label="Request summary">
@@ -223,7 +240,7 @@ function ProviderDashboard({ onLogout }) {
             </article>
             <article className="summary-card">
               <span className="summary-icon">★</span>
-              <div><p>Average rating</p><strong>4.8</strong></div>
+              <div><p>Average rating</p><strong>{profile?.avgRating?.toFixed?.(1) ?? '—'}</strong></div>
             </article>
           </section>
 
@@ -231,9 +248,15 @@ function ProviderDashboard({ onLogout }) {
             <div className="section-heading">
               <div>
                 <h2>Manage requests</h2>
-                <p>Accept or reject new requests, then move accepted jobs through their status.</p>
+                <p>Accept or reject new requests, then confirm once a job is done.</p>
               </div>
             </div>
+
+            {loading && <p className="subheading">Loading your requests…</p>}
+            {loadError && <p className="subheading">{loadError}</p>}
+            {!loading && !loadError && requests.length === 0 && (
+              <p className="subheading">No requests yet.</p>
+            )}
 
             <div className="request-list">
               {requests.map((request) => (
@@ -258,15 +281,33 @@ function ProviderDashboard({ onLogout }) {
                   <div className="request-actions">
                     {request.status === 'Pending' && (
                       <>
-                        <button type="button" className="primary-button compact" onClick={() => updateStatus(request.id, 'Accepted')}>Accept</button>
-                        <button type="button" className="danger-button compact" onClick={() => updateStatus(request.id, 'Rejected')}>Reject</button>
+                        <button
+                          type="button"
+                          className="primary-button compact"
+                          disabled={busyId === request.id}
+                          onClick={() => runAction(request.id, acceptBooking)}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          className="danger-button compact"
+                          disabled={busyId === request.id}
+                          onClick={() => runAction(request.id, denyBooking)}
+                        >
+                          Reject
+                        </button>
                       </>
                     )}
-                    {request.status === 'Accepted' && (
-                      <button type="button" className="primary-button compact" onClick={() => updateStatus(request.id, 'In Progress')}>Start Service</button>
-                    )}
-                    {request.status === 'In Progress' && (
-                      <button type="button" className="success-button compact" onClick={() => updateStatus(request.id, 'Completed')}>Mark Completed</button>
+                    {(request.status === 'Accepted' || request.status === 'In Progress') && (
+                      <button
+                        type="button"
+                        className="success-button compact"
+                        disabled={busyId === request.id}
+                        onClick={() => runAction(request.id, providerCompleteBooking)}
+                      >
+                        Mark Completed
+                      </button>
                     )}
                     <button
                       type="button"
@@ -285,11 +326,10 @@ function ProviderDashboard({ onLogout }) {
         <main className="page-wrap">
           <section className="page-heading">
             <div>
-              <p className="eyebrow">CLIENT DASHBOARD</p>
+              <p className="eyebrow">REQUEST HISTORY</p>
               <h1>Request History</h1>
               <p className="subheading">Track each service request from submission to completion.</p>
             </div>
-            <button type="button" className="primary-button">+ Create Request</button>
           </section>
 
           <section className="content-section">
@@ -298,7 +338,7 @@ function ProviderDashboard({ onLogout }) {
                 <article className="history-card" key={request.id}>
                   <div className="request-title-row">
                     <div>
-                      <p className="service-category">{request.provider}</p>
+                      <p className="service-category">{request.client}</p>
                       <h3>{request.service}</h3>
                     </div>
                     <StatusBadge status={request.status} />

@@ -11,6 +11,7 @@ import ProviderDashboard from "./Providerdashboard";
 import ClientProfile from "./components/ClientProfile";
 import ChatPage from "./pages/ChatPage";
 import LiveLocationPage from "./pages/LiveLocationPage";
+import ProviderProfile from "./components/Providerprofile";
 
 import {
   getValidSession,
@@ -169,6 +170,16 @@ function App() {
     />
   }
 />
+
+
+            <Route
+              path="/provider/profile"
+              element={
+                <ProviderProfile
+                  user={user}
+                />
+              }
+            />
 
 
             <Route

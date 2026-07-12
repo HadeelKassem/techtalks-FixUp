@@ -14,7 +14,7 @@ import com.fixup.service.PublicProviderService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/provider")
+@RequestMapping("/api/providers")
 @RequiredArgsConstructor
 public class PublicProviderController {
 

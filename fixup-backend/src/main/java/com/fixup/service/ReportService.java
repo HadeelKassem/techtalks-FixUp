@@ -30,7 +30,7 @@ public class ReportService {
         dto.setId(report.getId());
         dto.setReason(report.getReason());
         dto.setStatus(report.getStatus());
-        dto.setReportedByName(report.getClient().getName());
+        dto.setReportedByName(report.getClient().getUsername());
         dto.setCreatedAt(report.getCreatedAt());
         return dto;
     }

@@ -19,6 +19,7 @@ public class ProviderProfile {
     private String bio;
     private String skills;
     private String serviceArea;
+    private String profilePictureUrl;
     private boolean isVerified = false;
     private double avgRating = 0.0;
 }

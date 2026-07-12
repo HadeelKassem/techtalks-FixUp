@@ -44,8 +44,15 @@ public class ProviderProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
+        // Auto-create rather than throw if this provider registered before
+        // AuthServiceImpl started creating a ProviderProfile at signup —
+        // same defensive pattern as ClientProfileService.getClientProfile.
         ProviderProfile profile = providerProfileRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Provider profile not found for user: " + userId));
+                .orElseGet(() -> {
+                    ProviderProfile newProfile = new ProviderProfile();
+                    newProfile.setUser(user);
+                    return providerProfileRepository.save(newProfile);
+                });
 
         return mapToDto(user, profile);
     }
@@ -56,11 +63,16 @@ public class ProviderProfileService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
         ProviderProfile profile = providerProfileRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Provider profile not found for user: " + userId));
+                .orElseGet(() -> {
+                    ProviderProfile newProfile = new ProviderProfile();
+                    newProfile.setUser(user);
+                    return newProfile;
+                });
 
         if (request.getBio() != null)         profile.setBio(request.getBio());
         if (request.getSkills() != null)      profile.setSkills(request.getSkills());
         if (request.getServiceArea() != null) profile.setServiceArea(request.getServiceArea());
+        if (request.getProfilePictureUrl() != null) profile.setProfilePictureUrl(request.getProfilePictureUrl());
 
         providerProfileRepository.save(profile);
 
@@ -75,6 +87,7 @@ public class ProviderProfileService {
         dto.setBio(profile.getBio());
         dto.setSkills(profile.getSkills());
         dto.setServiceArea(profile.getServiceArea());
+        dto.setProfilePictureUrl(profile.getProfilePictureUrl());
         dto.setVerified(profile.isVerified());
         dto.setAvgRating(profile.getAvgRating());
         return dto;

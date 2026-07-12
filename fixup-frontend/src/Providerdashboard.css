@@ -83,6 +83,12 @@ button { font: inherit; }
   font-weight: 800;
 }
 
+   .profile-chip-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
 .page-wrap { width: min(1120px, 90%); margin: 52px auto 70px; }
 
 .page-heading {
