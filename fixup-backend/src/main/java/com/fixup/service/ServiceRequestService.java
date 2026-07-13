@@ -145,6 +145,41 @@ public class ServiceRequestService {
         response.setClientConfirmedComplete(request.isClientConfirmedComplete());
         response.setProviderConfirmedComplete(request.isProviderConfirmedComplete());
 
+        response.setSharingLocation(request.isSharingLocation());
+        response.setCurrentLatitude(request.getCurrentLatitude());
+        response.setCurrentLongitude(request.getCurrentLongitude());
+        response.setLocationUpdatedAt(request.getLocationUpdatedAt());
+
         return response;
     }
+
+    // PROVIDER - start sharing location
+public ServiceRequestResponseDTO startSharingLocation(Long id, String providerEmail) {
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+    if (request.getProvider() == null || !request.getProvider().getEmail().equals(providerEmail)) {
+        throw new RuntimeException("Not authorized");
+    }
+
+    request.setSharingLocation(true);
+    return mapToResponseDTO(serviceRequestRepository.save(request));
+}
+
+// PROVIDER - stop sharing location
+public ServiceRequestResponseDTO stopSharingLocation(Long id, String providerEmail) {
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+    if (request.getProvider() == null || !request.getProvider().getEmail().equals(providerEmail)) {
+        throw new RuntimeException("Not authorized");
+    }
+
+    request.setSharingLocation(false);
+    return mapToResponseDTO(serviceRequestRepository.save(request));
+}
+
+
+
+
 }

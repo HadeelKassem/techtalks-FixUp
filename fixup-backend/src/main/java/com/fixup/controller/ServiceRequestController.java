@@ -94,4 +94,22 @@ public class ServiceRequestController {
         return ResponseEntity.ok(
                 serviceRequestService.getMyRequests(authentication.getName()));
     }
+
+    // PROVIDER - start sharing location
+@PutMapping("/{id}/location/start")
+public ResponseEntity<ServiceRequestResponseDTO> startSharingLocation(
+        @PathVariable Long id,
+        Authentication authentication) {
+    return ResponseEntity.ok(
+            serviceRequestService.startSharingLocation(id, authentication.getName()));
+}
+
+// PROVIDER - stop sharing location
+@PutMapping("/{id}/location/stop")
+public ResponseEntity<ServiceRequestResponseDTO> stopSharingLocation(
+        @PathVariable Long id,
+        Authentication authentication) {
+    return ResponseEntity.ok(
+            serviceRequestService.stopSharingLocation(id, authentication.getName()));
+}
 }
