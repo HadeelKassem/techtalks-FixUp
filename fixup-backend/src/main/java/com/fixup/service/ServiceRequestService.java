@@ -1,11 +1,13 @@
 package com.fixup.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.fixup.dto.LocationUpdateRequest;
 import com.fixup.dto.ServiceRequestDTO;
 import com.fixup.dto.ServiceRequestResponseDTO;
 import com.fixup.model.Category;
@@ -176,6 +178,26 @@ public ServiceRequestResponseDTO stopSharingLocation(Long id, String providerEma
     }
 
     request.setSharingLocation(false);
+    return mapToResponseDTO(serviceRequestRepository.save(request));
+}
+
+// PROVIDER - send periodic location update
+public ServiceRequestResponseDTO updateLocation(Long id, LocationUpdateRequest locationUpdate, String providerEmail) {
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+    if (request.getProvider() == null || !request.getProvider().getEmail().equals(providerEmail)) {
+        throw new RuntimeException("Not authorized");
+    }
+
+    if (!request.isSharingLocation()) {
+        throw new RuntimeException("Location sharing is not active for this booking");
+    }
+
+    request.setCurrentLatitude(locationUpdate.getLatitude());
+    request.setCurrentLongitude(locationUpdate.getLongitude());
+    request.setLocationUpdatedAt(LocalDateTime.now());
+
     return mapToResponseDTO(serviceRequestRepository.save(request));
 }
 

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fixup.dto.LocationUpdateRequest;
 import com.fixup.dto.ServiceRequestDTO;
 import com.fixup.dto.ServiceRequestResponseDTO;
 import com.fixup.service.ServiceRequestService;
@@ -112,4 +113,15 @@ public ResponseEntity<ServiceRequestResponseDTO> stopSharingLocation(
     return ResponseEntity.ok(
             serviceRequestService.stopSharingLocation(id, authentication.getName()));
 }
+
+        // PROVIDER - send periodic location update
+        @PutMapping("/{id}/location")
+          public ResponseEntity<ServiceRequestResponseDTO> updateLocation(
+        @PathVariable Long id,
+        @RequestBody LocationUpdateRequest locationUpdate,
+        Authentication authentication) {
+    return ResponseEntity.ok(
+            serviceRequestService.updateLocation(id, locationUpdate, authentication.getName()));
+}
+
 }
