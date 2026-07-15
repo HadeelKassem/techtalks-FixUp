@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import "./LiveLocationPage.css";
 
+import {
+  getMyBookings,
+  startSharingLocation,
+  stopSharingLocation,
+  updateLocation,
+} from "../api";
+
 const fallbackLocation = {
   latitude: 33.8938,
   longitude: 35.5018,
@@ -21,8 +28,30 @@ function LiveLocationPage({ role = "PROVIDER" }) {
       : "Waiting for the provider to share a live location.",
   );
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [activeBooking, setActiveBooking] = useState(null);
 
   const isProvider = role === "PROVIDER";
+
+  useEffect(() => {
+  async function loadActiveBooking() {
+    try {
+      const bookings = await getMyBookings();
+      const inProgress = bookings.find((b) => b.status === "IN_PROGRESS");
+      setActiveBooking(inProgress || null);
+      setStatusMessage(
+        inProgress
+          ? (isProvider
+              ? "Location sharing is currently off."
+              : "Waiting for the provider to share a live location.")
+          : "No active job right now."
+      );
+    } catch (err) {
+      setStatusMessage("Could not load your active booking.");
+    }
+  }
+
+  loadActiveBooking();
+}, [isProvider]);
 
   useEffect(() => {
     return () => {
@@ -44,52 +73,80 @@ function LiveLocationPage({ role = "PROVIDER" }) {
   }, [location]);
 
   function updateFromPosition(position) {
-    setLocation({
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy: Math.round(position.coords.accuracy),
+  const latitude = position.coords.latitude;
+  const longitude = position.coords.longitude;
+
+  setLocation({
+    latitude,
+    longitude,
+    accuracy: Math.round(position.coords.accuracy),
+  });
+  setLastUpdated(new Date());
+  setSharing(true);
+  setStatusMessage("Your live location is being shared for this active request.");
+
+  if (activeBooking) {
+    updateLocation(activeBooking.id, { latitude, longitude }).catch(() => {
+      setStatusMessage("Location captured locally, but the update to the server failed.");
     });
-    setLastUpdated(new Date());
-    setSharing(true);
-    setStatusMessage("Your live location is being shared for this active request.");
+  }
+}
+
+  async function startSharing() {
+  if (!activeBooking) {
+    setStatusMessage("No active job to share location for.");
+    return;
   }
 
-  function startSharing() {
-    if (!navigator.geolocation) {
-      setStatusMessage("Location services are not supported by this browser.");
-      return;
-    }
-
-    setStatusMessage("Requesting permission to access your location…");
-
-    const id = navigator.geolocation.watchPosition(
-      updateFromPosition,
-      (error) => {
-        setSharing(false);
-        if (error.code === error.PERMISSION_DENIED) {
-          setStatusMessage("Location permission was denied. Allow location access and try again.");
-        } else {
-          setStatusMessage("Your location could not be detected. Please try again.");
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 15000,
-      },
-    );
-
-    setWatchId(id);
+  if (!navigator.geolocation) {
+    setStatusMessage("Location services are not supported by this browser.");
+    return;
   }
 
-  function stopSharing() {
-    if (watchId !== null && navigator.geolocation) {
-      navigator.geolocation.clearWatch(watchId);
-    }
-    setWatchId(null);
-    setSharing(false);
+  setStatusMessage("Requesting permission to access your location…");
+
+  try {
+    await startSharingLocation(activeBooking.id);
+  } catch (err) {
+    setStatusMessage("Could not start sharing: " + err.message);
+    return;
+  }
+
+  const id = navigator.geolocation.watchPosition(
+    updateFromPosition,
+    (error) => {
+      setSharing(false);
+      if (error.code === error.PERMISSION_DENIED) {
+        setStatusMessage("Location permission was denied. Allow location access and try again.");
+      } else {
+        setStatusMessage("Your location could not be detected. Please try again.");
+      }
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+  );
+
+  setWatchId(id);
+}
+
+ async function stopSharing() {
+  if (watchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(watchId);
+  }
+  setWatchId(null);
+  setSharing(false);
+
+  if (!activeBooking) {
     setStatusMessage("Location sharing has been stopped.");
+    return;
   }
+
+  try {
+    await stopSharingLocation(activeBooking.id);
+    setStatusMessage("Location sharing has been stopped.");
+  } catch (err) {
+    setStatusMessage("Stopped locally, but the server update failed: " + err.message);
+  }
+}
 
   function centerOnCurrentLocation() {
     if (!navigator.geolocation) return;
