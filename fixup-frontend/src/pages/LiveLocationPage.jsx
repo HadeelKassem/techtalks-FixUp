@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import "./LiveLocationPage.css";
 
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+
 import {
   getMyBookings,
   startSharingLocation,
@@ -52,6 +55,39 @@ function LiveLocationPage({ role = "PROVIDER" }) {
 
   loadActiveBooking();
 }, [isProvider]);
+
+useEffect(() => {
+  if (isProvider || !activeBooking) return;
+
+  const socket = new SockJS("http://localhost:8080/ws");
+  const stompClient = new Client({
+    webSocketFactory: () => socket,
+    onConnect: () => {
+      stompClient.subscribe(`/topic/requests/${activeBooking.id}/location`, (message) => {
+        const update = JSON.parse(message.body);
+
+        setLocation({
+          latitude: update.currentLatitude,
+          longitude: update.currentLongitude,
+          accuracy: 10,
+        });
+        setLastUpdated(new Date());
+        setSharing(update.sharingLocation);
+        setStatusMessage(
+          update.sharingLocation
+            ? "Tracking the provider's live location."
+            : "Waiting for the provider to share a live location."
+        );
+      });
+    },
+  });
+
+  stompClient.activate();
+
+  return () => {
+    stompClient.deactivate();
+  };
+}, [isProvider, activeBooking]);
 
   useEffect(() => {
     return () => {
@@ -243,9 +279,7 @@ function LiveLocationPage({ role = "PROVIDER" }) {
               </button>
             </div>
           ) : (
-            <button type="button" className="secondary-button location-main-button" onClick={centerOnCurrentLocation}>
-              Refresh map
-            </button>
+            null
           )}
 
           <div className="location-safety-note">
