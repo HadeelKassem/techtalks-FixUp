@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import com.fixup.dto.LocationUpdateRequest;
@@ -28,6 +29,9 @@ public class ServiceRequestService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     // CLIENT - create booking
     public ServiceRequestResponseDTO createRequest(ServiceRequestDTO dto, String clientEmail) {
@@ -198,7 +202,11 @@ public ServiceRequestResponseDTO updateLocation(Long id, LocationUpdateRequest l
     request.setCurrentLongitude(locationUpdate.getLongitude());
     request.setLocationUpdatedAt(LocalDateTime.now());
 
-    return mapToResponseDTO(serviceRequestRepository.save(request));
+   ServiceRequestResponseDTO response = mapToResponseDTO(serviceRequestRepository.save(request));
+
+    messagingTemplate.convertAndSend("/topic/requests/" + id + "/location", response);
+
+    return response;
 }
 
 
