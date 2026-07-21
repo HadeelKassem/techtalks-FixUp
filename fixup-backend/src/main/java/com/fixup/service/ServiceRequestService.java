@@ -1,11 +1,14 @@
 package com.fixup.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import com.fixup.dto.LocationUpdateRequest;
 import com.fixup.dto.ServiceRequestDTO;
 import com.fixup.dto.ServiceRequestResponseDTO;
 import com.fixup.model.Category;
@@ -26,6 +29,9 @@ public class ServiceRequestService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     // CLIENT - create booking
     public ServiceRequestResponseDTO createRequest(ServiceRequestDTO dto, String clientEmail) {
@@ -145,6 +151,65 @@ public class ServiceRequestService {
         response.setClientConfirmedComplete(request.isClientConfirmedComplete());
         response.setProviderConfirmedComplete(request.isProviderConfirmedComplete());
 
+        response.setSharingLocation(request.isSharingLocation());
+        response.setCurrentLatitude(request.getCurrentLatitude());
+        response.setCurrentLongitude(request.getCurrentLongitude());
+        response.setLocationUpdatedAt(request.getLocationUpdatedAt());
+
         return response;
     }
+
+    // PROVIDER - start sharing location
+public ServiceRequestResponseDTO startSharingLocation(Long id, String providerEmail) {
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+    if (request.getProvider() == null || !request.getProvider().getEmail().equals(providerEmail)) {
+        throw new RuntimeException("Not authorized");
+    }
+
+    request.setSharingLocation(true);
+    return mapToResponseDTO(serviceRequestRepository.save(request));
+}
+
+// PROVIDER - stop sharing location
+public ServiceRequestResponseDTO stopSharingLocation(Long id, String providerEmail) {
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+    if (request.getProvider() == null || !request.getProvider().getEmail().equals(providerEmail)) {
+        throw new RuntimeException("Not authorized");
+    }
+
+    request.setSharingLocation(false);
+    return mapToResponseDTO(serviceRequestRepository.save(request));
+}
+
+// PROVIDER - send periodic location update
+public ServiceRequestResponseDTO updateLocation(Long id, LocationUpdateRequest locationUpdate, String providerEmail) {
+    ServiceRequest request = serviceRequestRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+    if (request.getProvider() == null || !request.getProvider().getEmail().equals(providerEmail)) {
+        throw new RuntimeException("Not authorized");
+    }
+
+    if (!request.isSharingLocation()) {
+        throw new RuntimeException("Location sharing is not active for this booking");
+    }
+
+    request.setCurrentLatitude(locationUpdate.getLatitude());
+    request.setCurrentLongitude(locationUpdate.getLongitude());
+    request.setLocationUpdatedAt(LocalDateTime.now());
+
+   ServiceRequestResponseDTO response = mapToResponseDTO(serviceRequestRepository.save(request));
+
+    messagingTemplate.convertAndSend("/topic/requests/" + id + "/location", response);
+
+    return response;
+}
+
+
+
+
 }

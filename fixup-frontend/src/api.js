@@ -192,3 +192,20 @@ export function clientCompleteBooking(id) {
 export function cancelBooking(id) {
   return authRequest(`/api/bookings/${id}/cancel`, { method: "PUT" });
 }
+
+// ---- Location sharing ----
+
+export function startSharingLocation(id) {
+  return authRequest(`/api/bookings/${id}/location/start`, { method: "PUT" });
+}
+
+export function stopSharingLocation(id) {
+  return authRequest(`/api/bookings/${id}/location/stop`, { method: "PUT" });
+}
+
+export function updateLocation(id, { latitude, longitude }) {
+  return authRequest(`/api/bookings/${id}/location`, {
+    method: "PUT",
+    body: JSON.stringify({ latitude, longitude }),
+  });
+}
