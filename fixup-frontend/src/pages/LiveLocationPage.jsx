@@ -21,6 +21,30 @@ function formatCoordinate(value) {
   return Number(value).toFixed(6);
 }
 
+function initialsFromName(name) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function statusClass(status) {
+  return (status || "").toLowerCase().replaceAll("_", "-");
+}
+
+function statusLabel(status) {
+  if (!status) return "";
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function LiveLocationPage({ role = "PROVIDER" }) {
   const [location, setLocation] = useState(fallbackLocation);
   const [sharing, setSharing] = useState(false);
@@ -32,62 +56,74 @@ function LiveLocationPage({ role = "PROVIDER" }) {
   );
   const [lastUpdated, setLastUpdated] = useState(null);
   const [activeBooking, setActiveBooking] = useState(null);
+  const [loadingBooking, setLoadingBooking] = useState(true);
 
   const isProvider = role === "PROVIDER";
 
   useEffect(() => {
-  async function loadActiveBooking() {
-    try {
-      const bookings = await getMyBookings();
-      const inProgress = bookings.find((b) => b.status === "IN_PROGRESS");
-      setActiveBooking(inProgress || null);
-      setStatusMessage(
-        inProgress
-          ? (isProvider
-              ? "Location sharing is currently off."
-              : "Waiting for the provider to share a live location.")
-          : "No active job right now."
-      );
-    } catch (err) {
-      setStatusMessage("Could not load your active booking.");
-    }
-  }
+    let cancelled = false;
 
-  loadActiveBooking();
-}, [isProvider]);
+    async function loadActiveBooking() {
+      setLoadingBooking(true);
+      try {
+        const bookings = await getMyBookings();
+        const inProgress = bookings.find((b) => b.status === "IN_PROGRESS");
 
-useEffect(() => {
-  if (isProvider || !activeBooking) return;
+        if (cancelled) return;
 
-  const socket = new SockJS("http://localhost:8080/ws");
-  const stompClient = new Client({
-    webSocketFactory: () => socket,
-    onConnect: () => {
-      stompClient.subscribe(`/topic/requests/${activeBooking.id}/location`, (message) => {
-        const update = JSON.parse(message.body);
-
-        setLocation({
-          latitude: update.currentLatitude,
-          longitude: update.currentLongitude,
-          accuracy: 10,
-        });
-        setLastUpdated(new Date());
-        setSharing(update.sharingLocation);
+        setActiveBooking(inProgress || null);
         setStatusMessage(
-          update.sharingLocation
-            ? "Tracking the provider's live location."
-            : "Waiting for the provider to share a live location."
+          inProgress
+            ? isProvider
+              ? "Location sharing is currently off."
+              : "Waiting for the provider to share a live location."
+            : "No active job right now.",
         );
-      });
-    },
-  });
+      } catch (err) {
+        if (!cancelled) setStatusMessage("Could not load your active booking.");
+      } finally {
+        if (!cancelled) setLoadingBooking(false);
+      }
+    }
 
-  stompClient.activate();
+    loadActiveBooking();
+    return () => {
+      cancelled = true;
+    };
+  }, [isProvider]);
 
-  return () => {
-    stompClient.deactivate();
-  };
-}, [isProvider, activeBooking]);
+  useEffect(() => {
+    if (isProvider || !activeBooking) return;
+
+    const socket = new SockJS("http://localhost:8080/ws");
+    const stompClient = new Client({
+      webSocketFactory: () => socket,
+      onConnect: () => {
+        stompClient.subscribe(`/topic/requests/${activeBooking.id}/location`, (message) => {
+          const update = JSON.parse(message.body);
+
+          setLocation({
+            latitude: update.currentLatitude,
+            longitude: update.currentLongitude,
+            accuracy: 10,
+          });
+          setLastUpdated(new Date());
+          setSharing(update.sharingLocation);
+          setStatusMessage(
+            update.sharingLocation
+              ? "Tracking the provider's live location."
+              : "Waiting for the provider to share a live location.",
+          );
+        });
+      },
+    });
+
+    stompClient.activate();
+
+    return () => {
+      stompClient.deactivate();
+    };
+  }, [isProvider, activeBooking]);
 
   useEffect(() => {
     return () => {
@@ -109,84 +145,113 @@ useEffect(() => {
   }, [location]);
 
   function updateFromPosition(position) {
-  const latitude = position.coords.latitude;
-  const longitude = position.coords.longitude;
+    const latitude = position.coords.latitude;
+    const longitude = position.coords.longitude;
 
-  setLocation({
-    latitude,
-    longitude,
-    accuracy: Math.round(position.coords.accuracy),
-  });
-  setLastUpdated(new Date());
-  setSharing(true);
-  setStatusMessage("Your live location is being shared for this active request.");
-
-  if (activeBooking) {
-    updateLocation(activeBooking.id, { latitude, longitude }).catch(() => {
-      setStatusMessage("Location captured locally, but the update to the server failed.");
+    setLocation({
+      latitude,
+      longitude,
+      accuracy: Math.round(position.coords.accuracy),
     });
+    setLastUpdated(new Date());
+    setSharing(true);
+    setStatusMessage("Your live location is being shared for this active request.");
+
+    if (activeBooking) {
+      updateLocation(activeBooking.id, { latitude, longitude }).catch(() => {
+        setStatusMessage("Location captured locally, but the update to the server failed.");
+      });
+    }
   }
-}
 
   async function startSharing() {
-  if (!activeBooking) {
-    setStatusMessage("No active job to share location for.");
-    return;
+    if (!activeBooking) {
+      setStatusMessage("No active job to share location for.");
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setStatusMessage("Location services are not supported by this browser.");
+      return;
+    }
+
+    setStatusMessage("Requesting permission to access your location…");
+
+    try {
+      await startSharingLocation(activeBooking.id);
+    } catch (err) {
+      setStatusMessage("Could not start sharing: " + err.message);
+      return;
+    }
+
+    const id = navigator.geolocation.watchPosition(
+      updateFromPosition,
+      (error) => {
+        setSharing(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setStatusMessage("Location permission was denied. Allow location access and try again.");
+        } else {
+          setStatusMessage("Your location could not be detected. Please try again.");
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+
+    setWatchId(id);
   }
 
-  if (!navigator.geolocation) {
-    setStatusMessage("Location services are not supported by this browser.");
-    return;
+  async function stopSharing() {
+    if (watchId !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+    setWatchId(null);
+    setSharing(false);
+
+    if (!activeBooking) {
+      setStatusMessage("Location sharing has been stopped.");
+      return;
+    }
+
+    try {
+      await stopSharingLocation(activeBooking.id);
+      setStatusMessage("Location sharing has been stopped.");
+    } catch (err) {
+      setStatusMessage("Stopped locally, but the server update failed: " + err.message);
+    }
   }
-
-  setStatusMessage("Requesting permission to access your location…");
-
-  try {
-    await startSharingLocation(activeBooking.id);
-  } catch (err) {
-    setStatusMessage("Could not start sharing: " + err.message);
-    return;
-  }
-
-  const id = navigator.geolocation.watchPosition(
-    updateFromPosition,
-    (error) => {
-      setSharing(false);
-      if (error.code === error.PERMISSION_DENIED) {
-        setStatusMessage("Location permission was denied. Allow location access and try again.");
-      } else {
-        setStatusMessage("Your location could not be detected. Please try again.");
-      }
-    },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
-  );
-
-  setWatchId(id);
-}
-
- async function stopSharing() {
-  if (watchId !== null && navigator.geolocation) {
-    navigator.geolocation.clearWatch(watchId);
-  }
-  setWatchId(null);
-  setSharing(false);
-
-  if (!activeBooking) {
-    setStatusMessage("Location sharing has been stopped.");
-    return;
-  }
-
-  try {
-    await stopSharingLocation(activeBooking.id);
-    setStatusMessage("Location sharing has been stopped.");
-  } catch (err) {
-    setStatusMessage("Stopped locally, but the server update failed: " + err.message);
-  }
-}
 
   function centerOnCurrentLocation() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(updateFromPosition);
+  }
+
+  // Derive the person/booking details shown in the header from the real booking record
+  const otherParty = activeBooking ? (isProvider ? activeBooking.client : activeBooking.provider) : null;
+  const otherPartyName = otherParty?.name || "Unknown";
+  const otherPartyInitials = initialsFromName(otherPartyName);
+  const serviceName = activeBooking?.serviceName || activeBooking?.service?.name || "Service request";
+  const address = activeBooking?.address || activeBooking?.serviceAddress || "";
+
+  if (loadingBooking) {
+    return (
+      <main className="location-page-wrap">
+        <p>Loading your active request…</p>
+      </main>
+    );
+  }
+
+  if (!activeBooking) {
+    return (
+      <main className="location-page-wrap">
+        <section className="location-page-heading">
+          <div>
+            <p className="location-eyebrow">LIVE SERVICE TRACKING</p>
+            <h1>{isProvider ? "Share live location" : "Provider live location"}</h1>
+            <p>No active job right now.</p>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -212,10 +277,15 @@ useEffect(() => {
           <header className="location-map-header">
             <div>
               <small>ACTIVE REQUEST</small>
-              <h2>Emergency Plumbing Repair</h2>
-              <p>Sarah Haddad · Achrafieh, Beirut</p>
+              <h2>{serviceName}</h2>
+              <p>
+                {otherPartyName}
+                {address ? ` · ${address}` : ""}
+              </p>
             </div>
-            <span className="status-badge in-progress">In Progress</span>
+            <span className={`status-badge ${statusClass(activeBooking.status)}`}>
+              {statusLabel(activeBooking.status)}
+            </span>
           </header>
 
           <div className="map-frame-wrap">
@@ -226,9 +296,9 @@ useEffect(() => {
               loading="lazy"
             />
             <div className="map-person-card">
-              <span className="map-avatar">JP</span>
+              <span className="map-avatar">{otherPartyInitials}</span>
               <div>
-                <strong>John Plumbing</strong>
+                <strong>{otherPartyName}</strong>
                 <small>{sharing ? "Location updating live" : "Preview location"}</small>
               </div>
             </div>
@@ -278,9 +348,7 @@ useEffect(() => {
                 Update current location
               </button>
             </div>
-          ) : (
-            null
-          )}
+          ) : null}
 
           <div className="location-safety-note">
             <strong>Privacy and safety</strong>
@@ -288,9 +356,18 @@ useEffect(() => {
           </div>
 
           <div className="location-steps">
-            <div><span>1</span><p>Provider starts sharing after accepting the job.</p></div>
-            <div><span>2</span><p>The browser updates coordinates while the provider moves.</p></div>
-            <div><span>3</span><p>Sharing stops when the provider chooses Stop or completes the request.</p></div>
+            <div>
+              <span>1</span>
+              <p>Provider starts sharing after accepting the job.</p>
+            </div>
+            <div>
+              <span>2</span>
+              <p>The browser updates coordinates while the provider moves.</p>
+            </div>
+            <div>
+              <span>3</span>
+              <p>Sharing stops when the provider chooses Stop or completes the request.</p>
+            </div>
           </div>
         </aside>
       </section>
