@@ -137,6 +137,10 @@ export function getProviders() {
   return authRequest("/api/providers");
 }
 
+export function getProviderById(id) {
+  return authRequest(`/api/providers/${id}`);
+}
+
 // ---- Bookings / request history ----
 // GET /api/bookings/my -> List<ServiceRequestResponseDTO>
 export function getMyBookings() {

@@ -12,7 +12,7 @@ import ClientProfile from "./components/ClientProfile";
 import ChatPage from "./pages/ChatPage";
 import LiveLocationPage from "./pages/LiveLocationPage";
 import ProviderProfile from "./components/Providerprofile";
-
+import PublicProviderProfile from "./components/PublicProviderProfile";
 import {
   getValidSession,
   clearSession,
@@ -124,6 +124,10 @@ function App() {
   }
 />
 
+<Route
+  path="/providers/:id"
+  element={<PublicProviderProfile />}
+/>
 
             <Route
               path="*"

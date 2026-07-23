@@ -39,7 +39,7 @@ function bookingStatusClass(status){
 
 
 function ProviderCard({provider}){
-
+  const navigate = useNavigate();
   return (
 
     <div className="provider-card">
@@ -117,6 +117,11 @@ function ProviderCard({provider}){
 
 
       </div>
+      <button
+  onClick={() => navigate(`/providers/${provider.id}`)}
+>
+  View Profile
+</button>
 
 
     </div>

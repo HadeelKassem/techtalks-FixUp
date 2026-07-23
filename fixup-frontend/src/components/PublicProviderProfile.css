@@ -1,0 +1,20 @@
+.public-profile-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.public-profile-card {
+  width: 100%;
+  max-width: 750px;
+}
+
+.book-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
