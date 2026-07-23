@@ -22,4 +22,9 @@ private LocalDateTime createdAt;
 private boolean clientConfirmedComplete;
 private boolean providerConfirmedComplete;
 
+private boolean sharingLocation;
+private Double currentLatitude;
+private Double currentLongitude;
+private LocalDateTime locationUpdatedAt;
+
 }

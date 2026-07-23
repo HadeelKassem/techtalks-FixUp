@@ -196,3 +196,53 @@ export function clientCompleteBooking(id) {
 export function cancelBooking(id) {
   return authRequest(`/api/bookings/${id}/cancel`, { method: "PUT" });
 }
+
+// ---- Location sharing ----
+
+export function startSharingLocation(id) {
+  return authRequest(`/api/bookings/${id}/location/start`, { method: "PUT" });
+}
+
+export function stopSharingLocation(id) {
+  return authRequest(`/api/bookings/${id}/location/stop`, { method: "PUT" });
+}
+
+export function updateLocation(id, { latitude, longitude }) {
+  return authRequest(`/api/bookings/${id}/location`, {
+    method: "PUT",
+    body: JSON.stringify({ latitude, longitude }),
+  });
+}
+// Add these to your existing api.js, next to getMyBookings / startSharingLocation / etc.
+// They follow the same fetch + auth-header pattern you're already using there.
+
+export async function getConversationMessages(bookingId) {
+  const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/messages`, {
+    method: "GET",
+    headers: authHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load messages");
+  }
+
+  return response.json();
+}
+
+export async function sendChatMessage(bookingId, { text }) {
+  const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to send message");
+  }
+
+  return response.json();
+}
+
