@@ -37,11 +37,7 @@ export default function PublicProviderProfile() {
   return (
     <div className="public-profile-page">
       <div className="public-profile-card">
-
-        <button
-          className="back-btn"
-          onClick={() => navigate(-1)}
-        >
+        <button className="back-btn" onClick={() => navigate(-1)}>
           ← Back
         </button>
 
@@ -62,19 +58,11 @@ export default function PublicProviderProfile() {
         </div>
 
         <div className="provider-status-row">
-          {provider.verified && (
-            <span className="verified-pill">
-              ✓ Verified
-            </span>
-          )}
-
-          <span className="rating-pill">
-            ★ {provider.avgRating}
-          </span>
+          {provider.verified && <span className="verified-pill">✓ Verified</span>}
+          <span className="rating-pill">★ {provider.avgRating}</span>
         </div>
 
         <div className="grid">
-
           <div className="input-group">
             <label>Name</label>
             <input value={provider.name} readOnly />
@@ -87,30 +75,27 @@ export default function PublicProviderProfile() {
 
           <div className="input-group full-width">
             <label>Service Area</label>
-            <input
-              value={provider.serviceArea || "-"}
-              readOnly
-            />
+            <input value={provider.serviceArea || "-"} readOnly />
           </div>
 
           <div className="input-group full-width">
             <label>Bio</label>
-
-            <textarea
-              value={provider.bio || ""}
-              rows={4}
-              readOnly
-            />
+            <textarea value={provider.bio || ""} rows={4} readOnly />
           </div>
-
         </div>
 
         <div className="buttons">
-          <button className="book-btn">
+          <button
+            className="book-btn"
+            onClick={() =>
+              navigate(`/client/book/${provider.id || id}`, {
+                state: { provider },
+              })
+            }
+          >
             Book Now
           </button>
         </div>
-
       </div>
     </div>
   );
