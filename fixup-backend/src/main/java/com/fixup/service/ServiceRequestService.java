@@ -12,9 +12,12 @@ import com.fixup.dto.LocationUpdateRequest;
 import com.fixup.dto.ServiceRequestDTO;
 import com.fixup.dto.ServiceRequestResponseDTO;
 import com.fixup.model.Category;
+import com.fixup.model.ProviderProfile;
+import com.fixup.model.Role;
 import com.fixup.model.ServiceRequest;
 import com.fixup.model.User;
 import com.fixup.repository.CategoryRepository;
+import com.fixup.repository.ProviderProfileRepository;
 import com.fixup.repository.ServiceRequestRepository;
 import com.fixup.repository.UserRepository;
 
@@ -29,6 +32,9 @@ public class ServiceRequestService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ProviderProfileRepository providerProfileRepository;
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
@@ -49,7 +55,13 @@ public class ServiceRequestService {
         request.setNotes(dto.getNotes());
         request.setStatus(ServiceRequest.RequestStatus.PENDING);
 
-        return mapToResponseDTO(serviceRequestRepository.save(request));
+        ServiceRequestResponseDTO response = mapToResponseDTO(serviceRequestRepository.save(request));
+
+        // Let any provider currently viewing the "available jobs" feed for
+        // this category know a new request just came in.
+        messagingTemplate.convertAndSend("/topic/categories/" + category.getId() + "/requests", response);
+
+        return response;
     }
 
     // CLIENT - cancel booking
@@ -87,6 +99,11 @@ public class ServiceRequestService {
     public ServiceRequestResponseDTO acceptRequest(Long id, String providerEmail) {
         ServiceRequest request = serviceRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        // Guard against two providers accepting the same request in a race.
+        if (request.getProvider() != null) {
+            throw new RuntimeException("This request has already been accepted by another provider");
+        }
 
         User provider = userRepository.findByEmail(providerEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -126,26 +143,46 @@ public class ServiceRequestService {
         return mapToResponseDTO(request);
     }
 
-  // BOTH - get my bookings
-public List<ServiceRequestResponseDTO> getMyRequests(String email) {
+    // BOTH - get my bookings.
+    // CLIENT sees requests they created; PROVIDER sees requests they've
+    // accepted/completed. This was previously calling findByClient for
+    // everyone, which meant a provider's "my bookings" was always empty.
+    public List<ServiceRequestResponseDTO> getMyRequests(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-    User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+        List<ServiceRequest> requests = (user.getRole() == Role.PROVIDER)
+                ? serviceRequestRepository.findByProvider(user)
+                : serviceRequestRepository.findByClient(user);
 
-    if (user.getRole().name().equals("PROVIDER")) {
+        return requests.stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
 
-        return serviceRequestRepository.findByProvider(user)
+    // PROVIDER - pending requests in this provider's category that no
+    // provider has claimed yet. This is the "available jobs" feed that
+    // powers the Accept/Deny buttons on the provider dashboard.
+    public List<ServiceRequestResponseDTO> getAvailableRequests(String providerEmail) {
+        User user = userRepository.findByEmail(providerEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        ProviderProfile profile = providerProfileRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Provider profile not found"));
+
+        if (profile.getCategory() == null) {
+            // No category on file — nothing to show rather than erroring,
+            // so the dashboard doesn't break for providers created before
+            // categories existed.
+            return List.of();
+        }
+
+        return serviceRequestRepository
+                .findByProviderIsNullAndStatusAndCategory(ServiceRequest.RequestStatus.PENDING, profile.getCategory())
                 .stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
-
     }
-
-    return serviceRequestRepository.findByClient(user)
-            .stream()
-            .map(this::mapToResponseDTO)
-            .collect(Collectors.toList());
-}
 
     private ServiceRequestResponseDTO mapToResponseDTO(ServiceRequest request) {
         ServiceRequestResponseDTO response = new ServiceRequestResponseDTO();
@@ -219,8 +256,5 @@ public ServiceRequestResponseDTO updateLocation(Long id, LocationUpdateRequest l
 
     return response;
 }
-
-
-
 
 }

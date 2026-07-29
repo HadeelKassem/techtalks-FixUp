@@ -7,7 +7,7 @@ import SockJS from "sockjs-client";
 import { getMyBookings, getConversationMessages, sendChatMessage } from "../api";
 
 function statusClass(status) {
-  return (status || "").toLowerCase().replaceAll(" ", "-");
+  return (status || "").toLowerCase().replaceAll("_", "-");
 }
 
 function initialsFromName(name) {
@@ -38,7 +38,7 @@ function ChatPage({ role = "PROVIDER" }) {
   const messagesEndRef = useRef(null);
   const stompClientRef = useRef(null);
 
-  const currentSender = role === "CLIENT" ? "client" : "provider";
+  const currentSenderRole = role === "CLIENT" ? "CLIENT" : "PROVIDER";
 
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeConversationId) || null,
@@ -46,6 +46,8 @@ function ChatPage({ role = "PROVIDER" }) {
   );
 
   // --- Load conversations (one per booking) from the database ---
+  // ServiceRequestResponseDTO only has flat clientName/providerName strings —
+  // there is no nested client/provider object with a .name field.
   useEffect(() => {
     let cancelled = false;
 
@@ -55,22 +57,22 @@ function ChatPage({ role = "PROVIDER" }) {
       try {
         const bookings = await getMyBookings();
 
-        const mapped = bookings.map((booking) => {
-          const otherParty = role === "CLIENT" ? booking.provider : booking.client;
-          const lastMessage = booking.lastMessage; // optional, if backend includes a preview
+        const mapped = bookings
+          // A conversation only makes sense once a provider is attached —
+          // an unclaimed booking has no one on the other end to chat with.
+          .filter((booking) => booking.providerName)
+          .map((booking) => {
+            const otherPartyName = role === "CLIENT" ? booking.providerName : booking.clientName;
 
-          return {
-            id: booking.id,
-            name: otherParty?.name || "Unknown",
-            initials: initialsFromName(otherParty?.name),
-            service: booking.serviceName || booking.service?.name || "Service request",
-            status: booking.status,
-            online: Boolean(otherParty?.online),
-            unread: booking.unreadCount || 0,
-            preview: lastMessage?.text || "",
-            previewTime: lastMessage?.sentAt ? formatTime(lastMessage.sentAt) : "",
-          };
-        });
+            return {
+              id: booking.id,
+              name: otherPartyName || "Unknown",
+              initials: initialsFromName(otherPartyName),
+              service: booking.categoryName || "Service request",
+              status: booking.status,
+              preview: booking.notes || "",
+            };
+          });
 
         if (!cancelled) {
           setConversations(mapped);
@@ -103,7 +105,8 @@ function ChatPage({ role = "PROVIDER" }) {
           setMessages(
             data.map((message) => ({
               id: message.id,
-              sender: message.senderRole === "CLIENT" ? "client" : "provider",
+              sender: message.senderRole,
+              senderName: message.senderName,
               text: message.text,
               time: formatTime(message.sentAt),
             })),
@@ -133,13 +136,13 @@ function ChatPage({ role = "PROVIDER" }) {
         stompClient.subscribe(`/topic/requests/${activeConversationId}/chat`, (frame) => {
           const incoming = JSON.parse(frame.body);
           setMessages((current) => {
-            // Avoid duplicating a message we already added optimistically
             if (current.some((message) => message.id === incoming.id)) return current;
             return [
               ...current,
               {
                 id: incoming.id,
-                sender: incoming.senderRole === "CLIENT" ? "client" : "provider",
+                sender: incoming.senderRole,
+                senderName: incoming.senderName,
                 text: incoming.text,
                 time: formatTime(incoming.sentAt),
               },
@@ -169,7 +172,7 @@ function ChatPage({ role = "PROVIDER" }) {
     const optimisticId = `temp-${Date.now()}`;
     const optimisticMessage = {
       id: optimisticId,
-      sender: currentSender,
+      sender: currentSenderRole,
       text,
       time: formatTime(),
     };
@@ -179,13 +182,13 @@ function ChatPage({ role = "PROVIDER" }) {
 
     try {
       const saved = await sendChatMessage(activeConversationId, { text });
-      // Replace the optimistic message with the persisted one (real id/time from the DB)
       setMessages((current) =>
         current.map((message) =>
           message.id === optimisticId
             ? {
                 id: saved.id,
-                sender: saved.senderRole === "CLIENT" ? "client" : "provider",
+                sender: saved.senderRole,
+                senderName: saved.senderName,
                 text: saved.text,
                 time: formatTime(saved.sentAt),
               }
@@ -193,7 +196,7 @@ function ChatPage({ role = "PROVIDER" }) {
         ),
       );
     } catch (err) {
-      setErrorMessage("Message failed to send. Please try again.");
+      setErrorMessage(err.message || "Message failed to send. Please try again.");
       setMessages((current) => current.filter((message) => message.id !== optimisticId));
     }
   };
@@ -248,12 +251,10 @@ function ChatPage({ role = "PROVIDER" }) {
                   <span className="conversation-copy">
                     <span className="conversation-name-row">
                       <strong>{conversation.name}</strong>
-                      <small>{conversation.previewTime}</small>
                     </span>
                     <span className="conversation-service">{conversation.service}</span>
                     <span className="conversation-preview">{conversation.preview}</span>
                   </span>
-                  {conversation.unread > 0 && <span className="unread-count">{conversation.unread}</span>}
                 </button>
               );
             })}
@@ -268,10 +269,6 @@ function ChatPage({ role = "PROVIDER" }) {
                   <span className="chat-avatar">{activeConversation.initials}</span>
                   <div>
                     <h2>{activeConversation.name}</h2>
-                    <p>
-                      <span className={activeConversation.online ? "presence-dot online" : "presence-dot"} />
-                      {activeConversation.online ? "Online" : "Offline"}
-                    </p>
                   </div>
                 </div>
 
@@ -279,9 +276,6 @@ function ChatPage({ role = "PROVIDER" }) {
                   <span className={`status-badge ${statusClass(activeConversation.status)}`}>
                     {activeConversation.status}
                   </span>
-                  <button type="button" className="secondary-button compact" title="Live location will be added next">
-                    View location
-                  </button>
                 </div>
               </header>
 
@@ -305,7 +299,7 @@ function ChatPage({ role = "PROVIDER" }) {
                       <span>Today</span>
                     </div>
                     {messages.map((message) => {
-                      const mine = message.sender === currentSender;
+                      const mine = message.sender === currentSenderRole;
                       return (
                         <div key={message.id} className={mine ? "message-row is-mine" : "message-row"}>
                           <div className="message-bubble">
@@ -321,9 +315,6 @@ function ChatPage({ role = "PROVIDER" }) {
               </div>
 
               <form className="message-composer" onSubmit={sendMessage}>
-                <button type="button" className="attachment-button" aria-label="Attach a file" title="Attachments will be connected later">
-                  +
-                </button>
                 <input
                   value={messageInput}
                   onChange={(event) => setMessageInput(event.target.value)}

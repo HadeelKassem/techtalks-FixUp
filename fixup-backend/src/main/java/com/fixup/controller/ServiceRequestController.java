@@ -96,6 +96,14 @@ public class ServiceRequestController {
                 serviceRequestService.getMyRequests(authentication.getName()));
     }
 
+    // PROVIDER - pending requests in my category with no provider yet
+    @GetMapping("/available")
+    public ResponseEntity<List<ServiceRequestResponseDTO>> getAvailableRequests(
+            Authentication authentication) {
+        return ResponseEntity.ok(
+                serviceRequestService.getAvailableRequests(authentication.getName()));
+    }
+
     // PROVIDER - start sharing location
 @PutMapping("/{id}/location/start")
 public ResponseEntity<ServiceRequestResponseDTO> startSharingLocation(

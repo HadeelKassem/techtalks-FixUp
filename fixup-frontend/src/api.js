@@ -258,3 +258,20 @@ export function sendChatMessage(bookingId, { text }) {
     body: JSON.stringify({ text }),
   });
 }
+export function getAvailableRequests() {
+  return authRequest("/api/bookings/available");
+}
+ // Add these to api.js, next to the booking action functions.
+
+// POST /api/bookings/{id}/review -> ReviewDto
+export function submitReview(bookingId, { rating, comment }) {
+  return authRequest(`/api/bookings/${bookingId}/review`, {
+    method: "POST",
+    body: JSON.stringify({ rating, comment }),
+  });
+}
+
+// GET /api/providers/{id}/reviews -> List<ReviewDto>
+export function getProviderReviews(providerId) {
+  return authRequest(`/api/providers/${providerId}/reviews`);
+}

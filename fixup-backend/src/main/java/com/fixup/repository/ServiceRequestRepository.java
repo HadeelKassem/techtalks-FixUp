@@ -1,5 +1,6 @@
 package com.fixup.repository;
 
+import com.fixup.model.Category;
 import com.fixup.model.ServiceRequest;
 import com.fixup.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +14,8 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
     List<ServiceRequest> findByStatus(ServiceRequest.RequestStatus status);
     List<ServiceRequest> findByClientAndStatus(User client, ServiceRequest.RequestStatus status);
 
+    // Unclaimed requests (no provider yet) in a given category and status —
+    // this is the "available jobs" feed for providers.
+    List<ServiceRequest> findByProviderIsNullAndStatusAndCategory(
+            ServiceRequest.RequestStatus status, Category category);
 }

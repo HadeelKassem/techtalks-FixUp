@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import {
   getProviders,
   getMyBookings,
+  clientCompleteBooking,
+  submitReview,
   clearSession
 } from "./api";
 
@@ -133,7 +135,84 @@ function ProviderCard({provider}){
 
 
 
-function BookingRow({booking}){
+function StarInput({ value, onChange }) {
+  return (
+    <div className="star-input" role="radiogroup" aria-label="Rating">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          className="star-input-btn"
+          aria-checked={value === n}
+          role="radio"
+          onClick={() => onChange(n)}
+          style={{ fontSize: 20, background: "none", border: "none", cursor: "pointer", color: n <= value ? "#f5a623" : "#ccc" }}
+        >
+          {n <= value ? "★" : "☆"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ReviewForm({ bookingId, onSubmitted }) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (!rating) {
+      setError("Please choose a star rating.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitReview(bookingId, { rating, comment: comment.trim() || null });
+      onSubmitted(bookingId);
+    } catch (err) {
+      setError(err.message || "Could not submit your review. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      <strong style={{ fontSize: 14 }}>Rate this provider</strong>
+      <StarInput value={rating} onChange={setRating} />
+      <textarea
+        rows={2}
+        placeholder="Optional: share details about your experience"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+      />
+      {error && <span className="server-error">{error}</span>}
+      <button type="submit" className="primary-button compact" disabled={submitting} style={{ alignSelf: "flex-start" }}>
+        {submitting ? "Submitting..." : "Submit Review"}
+      </button>
+    </form>
+  );
+}
+
+
+// provider has accepted (ACCEPTED / IN_PROGRESS). Completion requires
+// BOTH sides to confirm — clientConfirmedComplete AND
+// providerConfirmedComplete — before status flips to COMPLETED.
+function BookingRow({ booking, onComplete, busy, onReviewed }) {
+
+  const isCompleted = (booking.status || "").toUpperCase() === "COMPLETED";
+
+  const canConfirmComplete =
+    ["ACCEPTED", "IN_PROGRESS"].includes((booking.status || "").toUpperCase()) &&
+    !booking.clientConfirmedComplete;
+
+  const waitingOnProvider =
+    booking.clientConfirmedComplete &&
+    !booking.providerConfirmedComplete &&
+    (booking.status || "").toUpperCase() !== "COMPLETED";
 
 return (
 
@@ -190,6 +269,32 @@ booking.notes &&
 
 </span>
 
+{waitingOnProvider && (
+  <p className="muted" style={{ marginTop: 8 }}>
+    You confirmed this job is complete — waiting for the provider to confirm too.
+  </p>
+)}
+
+{canConfirmComplete && (
+  <button
+    type="button"
+    className="primary-button compact"
+    style={{ marginTop: 8 }}
+    disabled={busy}
+    onClick={() => onComplete(booking.id)}
+  >
+    {busy ? "Confirming..." : "Mark as Completed"}
+  </button>
+)}
+
+{isCompleted && (
+  booking.hasReview ? (
+    <p className="muted" style={{ marginTop: 8 }}>You already reviewed this job. Thanks!</p>
+  ) : (
+    <ReviewForm bookingId={booking.id} onSubmitted={onReviewed} />
+  )
+)}
+
 
 
 </div>
@@ -227,6 +332,8 @@ const [historyError,setHistoryError]=useState("");
 
 
 const [menuOpen,setMenuOpen]=useState(false);
+
+const [busyBookingId, setBusyBookingId] = useState(null);
 
 
 
@@ -270,6 +377,24 @@ setLoadingHistory(false)
 },[]);
 
 
+
+async function handleCompleteBooking(id) {
+  setBusyBookingId(id);
+  try {
+    const updated = await clientCompleteBooking(id);
+    setBooks((current) => current.map((b) => (b.id === id ? updated : b)));
+  } catch (err) {
+    alert(err.message || "Could not confirm completion. Please try again.");
+  } finally {
+    setBusyBookingId(null);
+  }
+}
+
+function handleReviewed(bookingId) {
+  setBooks((current) =>
+    current.map((b) => (b.id === bookingId ? { ...b, hasReview: true } : b))
+  );
+}
 
 
 
@@ -570,6 +695,10 @@ books.map(booking=>
 key={booking.id}
 
 booking={booking}
+
+onComplete={handleCompleteBooking}
+
+busy={busyBookingId === booking.id}
 
 />
 

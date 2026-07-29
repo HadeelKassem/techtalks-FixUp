@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { clearSession, getMyBookings, getMyProviderProfile, acceptBooking, denyBooking, providerCompleteBooking } from './api'
+import {
+  clearSession,
+  getMyBookings,
+  getAvailableRequests,
+  getMyProviderProfile,
+  acceptBooking,
+  denyBooking,
+  providerCompleteBooking,
+} from './api'
 import './Providerdashboard.css'
 import { useNavigate } from "react-router-dom";
 
@@ -21,7 +29,7 @@ function toDisplayStatus(rawStatus) {
 
 // Reshapes a ServiceRequestResponseDTO into the { client, service, date,
 // time, location, notes } shape this page's UI expects.
-function toDisplayRequest(booking) {
+function toDisplayRequest(booking, { available = false } = {}) {
   return {
     id: booking.id,
     client: booking.clientName,
@@ -34,6 +42,11 @@ function toDisplayRequest(booking) {
     location: booking.location,
     notes: booking.notes,
     status: toDisplayStatus(booking.status),
+    clientConfirmedComplete: booking.clientConfirmedComplete,
+    providerConfirmedComplete: booking.providerConfirmedComplete,
+    // Marks requests that came from the "available" feed (unclaimed,
+    // in this provider's category) vs. ones already tied to this provider.
+    available,
   }
 }
 
@@ -101,7 +114,8 @@ function RequestDetails({ request }) {
 
 function ProviderDashboard({ onLogout }) {
   const [activeView, setActiveView] = useState('provider')
-  const [requests, setRequests] = useState([])
+  const [availableRequests, setAvailableRequests] = useState([])
+  const [myRequests, setMyRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [expandedRequestId, setExpandedRequestId] = useState(null)
@@ -110,11 +124,20 @@ function ProviderDashboard({ onLogout }) {
   const [profile, setProfile] = useState(null)
   const navigate = useNavigate();
 
-  useEffect(() => {
-    getMyBookings()
-      .then((data) => setRequests(data.map(toDisplayRequest)))
+  const loadRequests = () => {
+    setLoading(true)
+    setLoadError('')
+    Promise.all([getMyBookings(), getAvailableRequests()])
+      .then(([mine, available]) => {
+        setMyRequests(mine.map((b) => toDisplayRequest(b)))
+        setAvailableRequests(available.map((b) => toDisplayRequest(b, { available: true })))
+      })
       .catch((err) => setLoadError(err.message || "Couldn't load your requests."))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadRequests()
 
     getMyProviderProfile()
       .then(setProfile)
@@ -123,26 +146,49 @@ function ProviderDashboard({ onLogout }) {
       })
   }, [])
 
+  // requests shown to the user: unclaimed jobs they can act on, plus jobs
+  // already tied to them (accepted/in progress/completed).
+  const requests = useMemo(
+    () => [...availableRequests, ...myRequests],
+    [availableRequests, myRequests]
+  )
+
   const runAction = async (id, action) => {
     setBusyId(id)
     try {
       const updated = await action(id)
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? toDisplayRequest(updated) : r))
-      )
+
+      // Accepting/denying moves the request out of the "available" feed —
+      // an accepted job becomes one of "my" jobs; a denied one just drops
+      // off entirely (it's still unclaimed for other providers... unless
+      // your backend intends deny to fully cancel it, which it currently does).
+      setAvailableRequests((prev) => prev.filter((r) => r.id !== id))
+      setMyRequests((prev) => {
+        const exists = prev.some((r) => r.id === id)
+        const updatedDisplay = toDisplayRequest(updated)
+        return exists
+          ? prev.map((r) => (r.id === id ? updatedDisplay : r))
+          : updatedDisplay.provider // only add if this provider now owns it (i.e. accepted)
+          ? [...prev, updatedDisplay]
+          : prev
+      })
+
       setExpandedRequestId(id)
     } catch (err) {
       alert(err.message || 'That action failed. Please try again.')
+      // Our local "available" list may be stale (e.g. someone else just
+      // accepted it) — refresh from the server to resync.
+      loadRequests()
     } finally {
       setBusyId(null)
     }
   }
 
   const summary = useMemo(() => ({
-    pending: requests.filter((request) => request.status === 'Pending').length,
-    active: requests.filter((request) => ['Accepted', 'In Progress'].includes(request.status)).length,
-    completed: requests.filter((request) => request.status === 'Completed').length,
-  }), [requests])
+    pending: availableRequests.length,
+    active: myRequests.filter((request) => ['Accepted', 'In Progress'].includes(request.status)).length,
+    completed: myRequests.filter((request) => request.status === 'Completed').length,
+  }), [availableRequests, myRequests])
 
   const handleLogout = () => {
     clearSession()
@@ -264,7 +310,9 @@ function ProviderDashboard({ onLogout }) {
                   <div className="request-card-main">
                     <div className="request-title-row">
                       <div>
-                        <p className="service-category">SERVICE REQUEST</p>
+                        <p className="service-category">
+                          {request.available ? 'NEW REQUEST — AVAILABLE TO ACCEPT' : 'SERVICE REQUEST'}
+                        </p>
                         <h3>{request.service}</h3>
                       </div>
                       <StatusBadge status={request.status} />
@@ -279,7 +327,7 @@ function ProviderDashboard({ onLogout }) {
                   </div>
 
                   <div className="request-actions">
-                    {request.status === 'Pending' && (
+                    {request.available && request.status === 'Pending' && (
                       <>
                         <button
                           type="button"
@@ -300,14 +348,20 @@ function ProviderDashboard({ onLogout }) {
                       </>
                     )}
                     {(request.status === 'Accepted' || request.status === 'In Progress') && (
-                      <button
-                        type="button"
-                        className="success-button compact"
-                        disabled={busyId === request.id}
-                        onClick={() => runAction(request.id, providerCompleteBooking)}
-                      >
-                        Mark Completed
-                      </button>
+                      request.providerConfirmedComplete ? (
+                        <span className="subheading" style={{ alignSelf: 'center' }}>
+                          Waiting for client to confirm completion
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="success-button compact"
+                          disabled={busyId === request.id}
+                          onClick={() => runAction(request.id, providerCompleteBooking)}
+                        >
+                          {busyId === request.id ? 'Confirming...' : 'Mark Completed'}
+                        </button>
+                      )
                     )}
                     <button
                       type="button"
@@ -334,7 +388,7 @@ function ProviderDashboard({ onLogout }) {
 
           <section className="content-section">
             <div className="request-list history-list">
-              {requests.map((request) => (
+              {myRequests.map((request) => (
                 <article className="history-card" key={request.id}>
                   <div className="request-title-row">
                     <div>
