@@ -12,4 +12,8 @@ public class PublicProviderDto {
     private String serviceArea;
     private boolean isVerified;
     private double avgRating;
+
+    // The single category this provider offers services under.
+    private Long categoryId;
+    private String categoryName;
 }

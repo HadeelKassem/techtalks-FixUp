@@ -23,4 +23,7 @@ public class RegisterRequest {
     private String description;
 
     private String location;
+
+    // Provider only — the single category this provider offers services under
+    private Long categoryId;
 }

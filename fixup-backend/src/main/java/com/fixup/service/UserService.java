@@ -18,6 +18,8 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         user.setStatus(newStatus);
         return userRepository.save(user);
+    
     }
+    
 
 }

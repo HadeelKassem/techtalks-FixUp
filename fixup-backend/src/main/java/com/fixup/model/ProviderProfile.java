@@ -16,6 +16,11 @@ public class ProviderProfile {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // A provider offers services under exactly one category.
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     private String bio;
     private String skills;
     private String serviceArea;

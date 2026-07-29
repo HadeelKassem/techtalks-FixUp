@@ -126,15 +126,26 @@ public class ServiceRequestService {
         return mapToResponseDTO(request);
     }
 
-    // BOTH - get my bookings
-    public List<ServiceRequestResponseDTO> getMyRequests(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return serviceRequestRepository.findByClient(user)
+  // BOTH - get my bookings
+public List<ServiceRequestResponseDTO> getMyRequests(String email) {
+
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (user.getRole().name().equals("PROVIDER")) {
+
+        return serviceRequestRepository.findByProvider(user)
                 .stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
+
     }
+
+    return serviceRequestRepository.findByClient(user)
+            .stream()
+            .map(this::mapToResponseDTO)
+            .collect(Collectors.toList());
+}
 
     private ServiceRequestResponseDTO mapToResponseDTO(ServiceRequest request) {
         ServiceRequestResponseDTO response = new ServiceRequestResponseDTO();

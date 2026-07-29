@@ -1,16 +1,6 @@
-import { useState } from "react";
-import { login, signup, saveSession } from "./api";
+import { useEffect, useState } from "react";
+import { login, signup, saveSession, getCategories } from "./api";
 import "./Register.css";
-
-const serviceCategories = [
-  "Plumbing",
-  "Electrical",
-  "Carpentry",
-  "Painting",
-  "Appliance Repair",
-  "Cleaning",
-  "Other",
-];
 
 function Register({ onDone }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
@@ -21,13 +11,43 @@ function Register({ onDone }) {
     phoneNumber: "",
     password: "",
     confirmPassword: "",
-    description: serviceCategories[0], // provider's service category
+    description: "", // provider bio / about your business (optional)
+    categoryId: "", // provider's service category
     location: "",
   });
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoriesError, setCategoriesError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCategories() {
+      setLoadingCategories(true);
+      try {
+        const data = await getCategories();
+        if (!cancelled) {
+          setCategories(data);
+          // Default to the first category once loaded, if none chosen yet
+          setForm((prev) => (prev.categoryId ? prev : { ...prev, categoryId: data[0]?.id ?? "" }));
+        }
+      } catch (err) {
+        if (!cancelled) setCategoriesError(err.message || "Could not load service categories.");
+      } finally {
+        if (!cancelled) setLoadingCategories(false);
+      }
+    }
+
+    loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -56,6 +76,7 @@ function Register({ onDone }) {
     if (form.password.length < 6) next.password = "Use at least 6 characters.";
     if (form.password !== form.confirmPassword) next.confirmPassword = "Passwords don't match.";
     if (role === "client" && !form.location.trim()) next.location = "Enter your area.";
+    if (role === "provider" && !form.categoryId) next.categoryId = "Choose your main service category.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -83,7 +104,11 @@ function Register({ onDone }) {
       try {
         // Register endpoint only returns a confirmation message, not a
         // session — so send them to log in right after.
-        await signup({ role, ...form });
+        await signup({
+          role,
+          ...form,
+          categoryId: role === "provider" ? form.categoryId : undefined,
+        });
         setSuccessMessage("Account created! Log in below to continue.");
         setMode("login");
         setForm((prev) => ({ ...prev, password: "", confirmPassword: "" }));
@@ -202,16 +227,46 @@ function Register({ onDone }) {
                 {errors.location && <span className="field-error">{errors.location}</span>}
               </label>
             ) : (
-              <label className="field">
-                <span className="field-label">Main service category</span>
-                <select value={form.description} onChange={handleChange("description")}>
-                  {serviceCategories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <>
+                <label className="field">
+                  <span className="field-label">Main service category</span>
+                  {loadingCategories ? (
+                    <p style={{ margin: 0 }}>Loading categories...</p>
+                  ) : categoriesError ? (
+                    <span className="field-error">{categoriesError}</span>
+                  ) : (
+                    <select value={form.categoryId} onChange={handleChange("categoryId")}>
+                      <option value="">Select a category</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {errors.categoryId && <span className="field-error">{errors.categoryId}</span>}
+                </label>
+
+                <label className="field">
+                  <span className="field-label">Your service area</span>
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={handleChange("location")}
+                    placeholder="e.g. Achrafieh, Beirut"
+                  />
+                </label>
+
+                <label className="field">
+                  <span className="field-label">About your business (optional)</span>
+                  <textarea
+                    rows={3}
+                    value={form.description}
+                    onChange={handleChange("description")}
+                    placeholder="A short bio clients will see on your profile."
+                  />
+                </label>
+              </>
             ))}
 
           {mode === "login" ? (

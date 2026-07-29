@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class ProviderProfileDto {
+
     private Long userId;
     private String name;
     private String email;
@@ -11,6 +12,10 @@ public class ProviderProfileDto {
     private String skills;
     private String serviceArea;
     private String profilePictureUrl;
-    private boolean verified;
+    private boolean isVerified;
     private double avgRating;
+
+    // The single category this provider offers services under.
+    private Long categoryId;
+    private String categoryName;
 }

@@ -66,8 +66,9 @@ export async function login({ email, password }) {
 
 // Backend returns only { message } on success — no token, no user.
 // Field names must match RegisterRequest exactly: username, email,
-// password, phoneNumber, role, description, location.
-export function signup({ username, email, phoneNumber, password, role, description, location }) {
+// password, phoneNumber, role, description, location, categoryId.
+// categoryId only matters for PROVIDER signups; send null/undefined for CLIENT.
+export function signup({ username, email, phoneNumber, password, role, description, location, categoryId }) {
   return request("/api/auth/register", {
     method: "POST",
     body: JSON.stringify({
@@ -78,6 +79,7 @@ export function signup({ username, email, phoneNumber, password, role, descripti
       role: role?.toUpperCase(), // Spring's Role enum expects CLIENT / PROVIDER / ADMIN
       description,
       location,
+      categoryId: categoryId ? Number(categoryId) : null,
     }),
   });
 }
@@ -131,6 +133,14 @@ export function authRequest(path, options = {}) {
   });
 }
 
+// ---- Categories ----
+// GET /api/categories -> List<CategoryDto> ({ id, name })
+// Public (permitAll on the backend) since the signup form needs this
+// before the user has a token. Safe to call authenticated too.
+export function getCategories() {
+  return request("/api/categories");
+}
+
 // ---- Providers feed ----
 // GET /api/providers -> List<PublicProviderDto>
 export function getProviders() {
@@ -147,6 +157,27 @@ export function getMyBookings() {
   return authRequest("/api/bookings/my");
 }
 
+// POST /api/bookings -> ServiceRequestResponseDTO
+// body must match ServiceRequestDTO exactly: { categoryId, location, preferredDate, notes }
+export function createBooking({ 
+  categoryId, 
+  providerId, 
+  location, 
+  preferredDate, 
+  notes 
+}) {
+
+  return authRequest("/api/bookings", {
+    method: "POST",
+    body: JSON.stringify({
+      categoryId,
+      providerId,
+      location,
+      preferredDate,
+      notes
+    }),
+  });
+}
 // ---- Client profile ----
 // GET /api/clients/me/profile -> ClientProfileDto
 export function getMyClientProfile() {
@@ -213,36 +244,17 @@ export function updateLocation(id, { latitude, longitude }) {
     body: JSON.stringify({ latitude, longitude }),
   });
 }
-// Add these to your existing api.js, next to getMyBookings / startSharingLocation / etc.
-// They follow the same fetch + auth-header pattern you're already using there.
 
-export async function getConversationMessages(bookingId) {
-  const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/messages`, {
-    method: "GET",
-    headers: authHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load messages");
-  }
-
-  return response.json();
+// ---- Chat ----
+// GET /api/bookings/{id}/messages -> List<MessageDto>
+export function getConversationMessages(bookingId) {
+  return authRequest(`/api/bookings/${bookingId}/messages`);
 }
 
-export async function sendChatMessage(bookingId, { text }) {
-  const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/messages`, {
+// POST /api/bookings/{id}/messages -> MessageDto
+export function sendChatMessage(bookingId, { text }) {
+  return authRequest(`/api/bookings/${bookingId}/messages`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
     body: JSON.stringify({ text }),
   });
-
-  if (!response.ok) {
-    throw new Error("Failed to send message");
-  }
-
-  return response.json();
 }
-

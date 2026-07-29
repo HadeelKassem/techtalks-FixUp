@@ -4,14 +4,12 @@ import { authRequest } from "../api";
 import "./BookingForm.css";
 
 const initialForm = {
-  date: "",
-  time: "",
-  description: "",
+  preferredDate: "",
+  preferredTime: "",
   address: "",
   area: "",
   locationDetails: "",
-  latitude: "",
-  longitude: "",
+  description: "",
 };
 
 export default function BookingForm({ user }) {
@@ -23,23 +21,25 @@ export default function BookingForm({ user }) {
   const [provider, setProvider] = useState(providerFromNavigation);
   const [loadingProvider, setLoadingProvider] = useState(!providerFromNavigation);
   const [providerError, setProviderError] = useState("");
+
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
-  const [locationStatus, setLocationStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  // @Future on the backend requires a date strictly after today
   const minimumDate = useMemo(() => {
-    const today = new Date();
-    const offset = today.getTimezoneOffset();
-    return new Date(today.getTime() - offset * 60 * 1000)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const offset = tomorrow.getTimezoneOffset();
+    return new Date(tomorrow.getTime() - offset * 60 * 1000)
       .toISOString()
       .split("T")[0];
   }, []);
 
   useEffect(() => {
-    if (providerFromNavigation) {
-      return;
-    }
+    if (providerFromNavigation) return;
 
     async function loadProvider() {
       try {
@@ -61,38 +61,13 @@ export default function BookingForm({ user }) {
     setErrors((current) => ({ ...current, [name]: "" }));
   }
 
-  function useCurrentLocation() {
-    if (!navigator.geolocation) {
-      setLocationStatus("Your browser does not support location sharing.");
-      return;
-    }
-
-    setLocationStatus("Getting your current location...");
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setForm((current) => ({
-          ...current,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
-        }));
-        setLocationStatus("Current location added successfully.");
-      },
-      () => {
-        setLocationStatus("Location permission was denied or unavailable.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
-
   function validateForm() {
     const nextErrors = {};
 
-    if (!form.date) nextErrors.date = "Please choose a date.";
-    if (!form.time) nextErrors.time = "Please choose a time.";
-    if (!form.description.trim()) {
-      nextErrors.description = "Please explain what service you need.";
+    if (!provider?.categoryId) {
+      nextErrors.category = "This provider has no category on file — booking can't be created.";
     }
+    if (!form.preferredDate) nextErrors.preferredDate = "Please choose a date.";
     if (!form.address.trim()) {
       nextErrors.address = "Please enter the address where the provider should come.";
     }
@@ -101,34 +76,42 @@ export default function BookingForm({ user }) {
     return Object.keys(nextErrors).length === 0;
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  // The DTO only has a single `location` string and a single `notes` string,
+  // so we fold the richer form fields into those two before sending.
+  // categoryId comes from the provider being booked, not from the form.
+  function buildPayload() {
+    const locationParts = [form.address.trim(), form.area.trim(), form.locationDetails.trim()].filter(Boolean);
 
-    if (!validateForm()) {
-      return;
-    }
+    const notesParts = [];
+    if (form.preferredTime) notesParts.push(`Preferred time: ${form.preferredTime}`);
+    if (form.description.trim()) notesParts.push(form.description.trim());
 
-    const booking = {
-      id: Date.now(),
-      providerId,
-      providerName: provider?.name || "Selected provider",
-      clientId: user?.id || null,
-      clientName: user?.name || user?.fullName || "Client",
-      ...form,
-      status: "PENDING",
-      createdAt: new Date().toISOString(),
+    return {
+      categoryId: provider.categoryId,
+      location: locationParts.join(", "),
+      preferredDate: form.preferredDate,
+      notes: notesParts.join("\n\n") || null,
     };
+  }
 
-    const previousBookings = JSON.parse(
-      localStorage.getItem("fixupBookings") || "[]"
-    );
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSubmitError("");
 
-    localStorage.setItem(
-      "fixupBookings",
-      JSON.stringify([...previousBookings, booking])
-    );
+    if (!validateForm()) return;
 
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await authRequest("/api/bookings", {
+        method: "POST",
+        body: JSON.stringify(buildPayload()),
+      });
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error.message || "Could not submit your booking request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (loadingProvider) {
@@ -151,14 +134,10 @@ export default function BookingForm({ user }) {
       <main className="booking-page">
         <section className="booking-success-card">
           <div className="booking-success-icon">✓</div>
-          <h1>Booking request created</h1>
+          <h1>Booking request sent</h1>
           <p>
-            Your request for <strong>{provider?.name || "the provider"}</strong> was
-            saved successfully.
-          </p>
-          <p className="booking-demo-note">
-            This is the frontend version, so the request is currently stored only
-            in this browser.
+            Your request for <strong>{provider?.name || "the provider"}</strong> has been sent.
+            You'll be notified once they respond.
           </p>
           <div className="booking-success-actions">
             <button onClick={() => navigate("/client")}>Client Dashboard</button>
@@ -166,6 +145,7 @@ export default function BookingForm({ user }) {
               className="secondary"
               onClick={() => {
                 setForm(initialForm);
+                setSubmitError("");
                 setSubmitted(false);
               }}
             >
@@ -188,56 +168,53 @@ export default function BookingForm({ user }) {
           <p className="booking-eyebrow">FixUp Service Booking</p>
           <h1>Book {provider?.name || "Provider"}</h1>
           <p>
-            Choose when you need the service, explain the request, and tell the
-            provider where to come.
+            Choose when you need the service, explain the request, and tell the provider where to come.
           </p>
         </header>
 
         <div className="booking-provider-summary">
           <img
-            src={
-              "https://ui-avatars.com/api/?name=" +
-              encodeURIComponent(provider?.name || "Provider")
-            }
+            src={"https://ui-avatars.com/api/?name=" + encodeURIComponent(provider?.name || "Provider")}
             alt={provider?.name || "Provider"}
           />
           <div>
             <strong>{provider?.name || "Selected Provider"}</strong>
-            <span>{provider?.skills || "Service provider"}</span>
+            <span>{provider?.categoryName || provider?.skills || "Service provider"}</span>
             <small>{provider?.serviceArea || "Service area not specified"}</small>
           </div>
         </div>
 
+        {errors.category && <div className="booking-submit-error">{errors.category}</div>}
+
         <form className="booking-form" onSubmit={handleSubmit} noValidate>
           <div className="booking-form-row">
             <div className="booking-field">
-              <label htmlFor="date">Preferred date *</label>
+              <label htmlFor="preferredDate">Preferred date *</label>
               <input
-                id="date"
-                name="date"
+                id="preferredDate"
+                name="preferredDate"
                 type="date"
                 min={minimumDate}
-                value={form.date}
+                value={form.preferredDate}
                 onChange={handleChange}
               />
-              {errors.date && <span className="booking-field-error">{errors.date}</span>}
+              {errors.preferredDate && <span className="booking-field-error">{errors.preferredDate}</span>}
             </div>
 
             <div className="booking-field">
-              <label htmlFor="time">Preferred time *</label>
+              <label htmlFor="preferredTime">Preferred time</label>
               <input
-                id="time"
-                name="time"
+                id="preferredTime"
+                name="preferredTime"
                 type="time"
-                value={form.time}
+                value={form.preferredTime}
                 onChange={handleChange}
               />
-              {errors.time && <span className="booking-field-error">{errors.time}</span>}
             </div>
           </div>
 
           <div className="booking-field">
-            <label htmlFor="description">What service do you need? *</label>
+            <label htmlFor="description">What service do you need?</label>
             <textarea
               id="description"
               name="description"
@@ -246,13 +223,10 @@ export default function BookingForm({ user }) {
               value={form.description}
               onChange={handleChange}
             />
-            {errors.description && (
-              <span className="booking-field-error">{errors.description}</span>
-            )}
           </div>
 
           <div className="booking-field">
-            <label htmlFor="address">Client address *</label>
+            <label htmlFor="address">Address *</label>
             <input
               id="address"
               name="address"
@@ -261,9 +235,7 @@ export default function BookingForm({ user }) {
               value={form.address}
               onChange={handleChange}
             />
-            {errors.address && (
-              <span className="booking-field-error">{errors.address}</span>
-            )}
+            {errors.address && <span className="booking-field-error">{errors.address}</span>}
           </div>
 
           <div className="booking-form-row">
@@ -292,24 +264,10 @@ export default function BookingForm({ user }) {
             </div>
           </div>
 
-          <div className="booking-location-box">
-            <div>
-              <strong>Current location</strong>
-              <p>Add coordinates to help the provider find you more easily.</p>
-              {form.latitude && form.longitude && (
-                <small>
-                  Latitude: {form.latitude} · Longitude: {form.longitude}
-                </small>
-              )}
-              {locationStatus && <span>{locationStatus}</span>}
-            </div>
-            <button type="button" onClick={useCurrentLocation}>
-              Use Current Location
-            </button>
-          </div>
+          {submitError && <div className="booking-submit-error">{submitError}</div>}
 
-          <button className="booking-submit-button" type="submit">
-            Submit Booking Request
+          <button className="booking-submit-button" type="submit" disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit Booking Request"}
           </button>
         </form>
       </section>

@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 public class PublicProviderService {
 
     private final ProviderProfileRepository providerProfileRepository;
+    private final ReviewService reviewService;
 
     public List<PublicProviderDto> getAllProviders() {
         return providerProfileRepository.findAll()
@@ -39,14 +40,18 @@ public class PublicProviderService {
         dto.setServiceArea(profile.getServiceArea());
         dto.setVerified(profile.isVerified());
         dto.setAvgRating(profile.getAvgRating());
+
+        if (profile.getCategory() != null) {
+            dto.setCategoryId(profile.getCategory().getId());
+            dto.setCategoryName(profile.getCategory().getName());
+        }
+
         return dto;
     }
 
-    private final ReviewService reviewService; 
-
     public double getAverageRating(Long id) {
-    ProviderProfile profile = providerProfileRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Provider not found with id: " + id));
-    return reviewService.calculateAverageRating(profile.getUser());
-}
+        ProviderProfile profile = providerProfileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Provider not found with id: " + id));
+        return reviewService.calculateAverageRating(profile.getUser());
+    }
 }

@@ -4,10 +4,12 @@ import com.fixup.dto.request.LoginRequest;
 import com.fixup.dto.request.RegisterRequest;
 import com.fixup.dto.response.LoginResponse;
 import com.fixup.dto.response.RegisterResponse;
+import com.fixup.model.Category;
 import com.fixup.model.Client;
 import com.fixup.model.Provider;
 import com.fixup.model.ProviderProfile;
 import com.fixup.model.User;
+import com.fixup.repository.CategoryRepository;
 import com.fixup.repository.ClientRepository;
 import com.fixup.repository.ProviderProfileRepository;
 import com.fixup.repository.ProviderRepository;
@@ -26,6 +28,7 @@ public class AuthServiceImpl implements AuthService {
     private final ClientRepository clientRepository;
     private final ProviderRepository providerRepository;
     private final ProviderProfileRepository providerProfileRepository;
+    private final CategoryRepository categoryRepository;
 
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -51,6 +54,13 @@ public class AuthServiceImpl implements AuthService {
 
         } else {
 
+            if (request.getCategoryId() == null) {
+                throw new RuntimeException("A category is required for provider signup");
+            }
+
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found: " + request.getCategoryId()));
+
             Provider provider = new Provider();
 
             provider.setUsername(request.getUsername());
@@ -73,6 +83,7 @@ public class AuthServiceImpl implements AuthService {
             profile.setUser(provider);
             profile.setBio(request.getDescription());
             profile.setServiceArea(request.getLocation());
+            profile.setCategory(category);
 
             providerProfileRepository.save(profile);
         }
