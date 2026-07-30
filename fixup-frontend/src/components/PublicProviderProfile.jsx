@@ -6,7 +6,7 @@ import "./PublicProviderProfile.css";
 export default function PublicProviderProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-
+  const [reviews, setReviews] = useState([]);
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,8 +14,11 @@ export default function PublicProviderProfile() {
   useEffect(() => {
     async function loadProvider() {
       try {
-        const data = await authRequest(`/api/providers/${id}`);
-        setProvider(data);
+        const providerData = await authRequest(`/api/providers/${id}`);
+        setProvider(providerData);
+    
+        const reviewData = await authRequest(`/api/providers/${id}/reviews`);
+        setReviews(reviewData);
       } catch (err) {
         setError(err.message || "Couldn't load provider.");
       } finally {
@@ -96,7 +99,38 @@ export default function PublicProviderProfile() {
             Book Now
           </button>
         </div>
+        <div className="reviews-section">
+  <h2>Customer Reviews</h2>
+
+  {reviews.length === 0 ? (
+    <p className="no-reviews">No reviews yet.</p>
+  ) : (
+    reviews.map((review) => (
+      <div className="review-card" key={review.id}>
+        <div className="review-top">
+          <strong>{review.clientName}</strong>
+
+          <div className="stars">
+            {"★".repeat(review.rating)}
+            {"☆".repeat(5 - review.rating)}
+          </div>
+        </div>
+
+        {review.comment && (
+          <p className="review-comment">
+            {review.comment}
+          </p>
+        )}
+
+        <small>
+          {new Date(review.createdAt).toLocaleDateString()}
+        </small>
       </div>
+    ))
+  )}
+</div>
+      </div>
+
     </div>
   );
 }

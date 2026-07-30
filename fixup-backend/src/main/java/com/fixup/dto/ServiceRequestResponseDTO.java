@@ -27,4 +27,12 @@ private Double currentLatitude;
 private Double currentLongitude;
 private LocalDateTime locationUpdatedAt;
 
+private boolean hasReview;
+
+private Integer reviewRating;
+
+private String reviewComment;
+
+private LocalDateTime reviewDate;
+
 }

@@ -119,7 +119,7 @@ function ProviderCard({provider}){
 
 
       </div>
-      <button
+      <button  className="button"
   onClick={() => navigate(`/providers/${provider.id}`)}
 >
   View Profile
@@ -289,9 +289,39 @@ booking.notes &&
 
 {isCompleted && (
   booking.hasReview ? (
-    <p className="muted" style={{ marginTop: 8 }}>You already reviewed this job. Thanks!</p>
+
+    <div className="review-display">
+
+      <h4>Your Review</h4>
+
+      <div className="stars">
+        {"★".repeat(booking.reviewRating)}
+        {"☆".repeat(5 - booking.reviewRating)}
+      </div>
+
+
+      {booking.reviewComment && (
+        <p>
+          {booking.reviewComment}
+        </p>
+      )}
+
+      <small>
+        {booking.reviewDate &&
+          new Date(booking.reviewDate).toLocaleDateString()
+        }
+      </small>
+
+    </div>
+
+
   ) : (
-    <ReviewForm bookingId={booking.id} onSubmitted={onReviewed} />
+
+    <ReviewForm
+      bookingId={booking.id}
+      onSubmitted={onReviewed}
+    />
+
   )
 )}
 
@@ -315,9 +345,11 @@ const navigate = useNavigate();
 
 
 const [tab,setTab]=useState("feed");
-
 const [providers,setProviders]=useState([]);
 
+const [searchName, setSearchName] = useState("");
+
+const [selectedCategory, setSelectedCategory] = useState("All");
 const [books,setBooks]=useState([]);
 
 
@@ -407,7 +439,28 @@ onLogout?.();
 
 }
 
+const categories = [
+  "All",
+  ...new Set(
+    providers
+      .map(provider => provider.categoryName)
+      .filter(Boolean)
+  )
+];
 
+const filteredProviders = providers.filter((provider)=>{
+
+  const nameMatch =
+    provider.name
+      ?.toLowerCase()
+      .includes(searchName.toLowerCase());
+
+      const categoryMatch =
+      selectedCategory === "All" ||
+      provider.categoryName === selectedCategory;
+  return nameMatch && categoryMatch;
+
+});
 
 
 
@@ -494,13 +547,7 @@ Request History
 
 </nav>
 
-
-
-
-
 <div className="profile-menu-wrap">
-
-
 <button
 
 className="profile-icon-btn"
@@ -519,10 +566,6 @@ user?.email?.charAt(0)?.toUpperCase()
 
 </button>
 
-
-
-
-
 {
 menuOpen &&
 
@@ -540,43 +583,19 @@ setMenuOpen(false);
 }}
 
 >
-
 Profile
-
 </button>
-
-
 
 <button onClick={handleLogout}>
 
 Log out
 
 </button>
-
-
-
 </div>
-
 }
-
-
-
 </div>
-
-
-
-
 </header>
-
-
-
-
-
-
 <main className="client-page-wrap">
-
-
-
 {
 tab==="feed" &&
 
@@ -584,10 +603,68 @@ tab==="feed" &&
 
 
 <h1 className="section-title">
-
 Available providers
-
 </h1>
+
+
+
+<div className="provider-filter">
+
+
+<input
+
+className="search-provider"
+
+type="text"
+
+placeholder="Search provider by name..."
+
+value={searchName}
+
+onChange={(e)=>
+setSearchName(e.target.value)
+}
+
+/>
+
+
+
+<select
+
+className="category-filter"
+
+value={selectedCategory}
+
+onChange={(e)=>
+setSelectedCategory(e.target.value)
+}
+
+>
+
+
+{
+categories.map(category=>(
+
+<option
+key={category}
+value={category}
+>
+
+{category}
+
+</option>
+
+))
+}
+
+
+</select>
+
+
+
+</div>
+
+
 
 
 
@@ -600,20 +677,41 @@ Loading providers...
 
 
 
+
+
 {
 feedError &&
 <div className="server-error">
+
 {feedError}
+
 </div>
 }
+
+
+
 
 
 
 <div className="provider-grid">
 
 
+
 {
-providers.map(provider=>
+filteredProviders.length === 0 && !loadingFeed &&
+
+<p className="muted">
+No providers found.
+</p>
+
+}
+
+
+
+
+
+{
+filteredProviders.map(provider=>(
 
 <ProviderCard
 
@@ -623,7 +721,7 @@ provider={provider}
 
 />
 
-)
+))
 
 }
 
@@ -634,30 +732,15 @@ provider={provider}
 
 
 </section>
-
 }
-
-
-
-
-
-
 {
 tab==="history" &&
-
-
 <section>
-
-
 <h1 className="section-title">
 
 Your request history
 
 </h1>
-
-
-
-
 {
 loadingHistory &&
 <p className="muted">
@@ -667,10 +750,6 @@ Loading requests...
 </p>
 
 }
-
-
-
-
 {
 historyError &&
 <div className="server-error">
@@ -679,14 +758,7 @@ historyError &&
 
 </div>
 }
-
-
-
-
-
 <div className="booking-list">
-
-
 {
 books.map(booking=>
 
@@ -699,40 +771,15 @@ booking={booking}
 onComplete={handleCompleteBooking}
 
 busy={busyBookingId === booking.id}
-
+onReviewed={handleReviewed}
 />
-
 )
-
 }
-
-
-
 </div>
-
-
-
-
 </section>
-
-
 }
-
-
-
 </main>
-
-
-
 </div>
-
-
 );
-
-
-
 }
-
-
-
 export default ClientDashboard;

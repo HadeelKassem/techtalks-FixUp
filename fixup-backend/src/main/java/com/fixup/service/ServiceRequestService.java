@@ -20,6 +20,7 @@ import com.fixup.repository.CategoryRepository;
 import com.fixup.repository.ProviderProfileRepository;
 import com.fixup.repository.ServiceRequestRepository;
 import com.fixup.repository.UserRepository;
+import com.fixup.repository.ReviewRepository;
 
 @Service
 public class ServiceRequestService {
